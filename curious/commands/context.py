@@ -46,8 +46,9 @@ class Context(object):
         Member: convert_member,
         Role: convert_role,
         # Guild: _convert_guild,
-        List: convert_list,
         Union: convert_union,
+        List: convert_list,  # typing 3.6
+        list: convert_list,  # typing 3.7
         str: lambda ann, ctx, arg: arg,
         int: convert_int,
         float: convert_float,

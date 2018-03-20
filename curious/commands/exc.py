@@ -84,12 +84,8 @@ class ConversionFailedError(CommandsError):
         self.message = message
 
     def __repr__(self) -> str:
-        try:
-            name = getattr(self.to_type, "__name__")
-        except AttributeError:
-            name = repr(self.to_type)
-
-        return f"Cannot convert `{self.arg}` to type `{name}`: {self.message}."
+        from curious.commands.utils import stringify
+        return f"Cannot convert `{self.arg}` to type `{stringify(self.to_type)}`: {self.message}."
 
     __str__ = __repr__
 
