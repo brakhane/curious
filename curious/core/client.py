@@ -30,7 +30,7 @@ from types import MappingProxyType
 
 import collections
 import multio
-from lomond.errors import WebSocketClosing
+from lomond.errors import WebSocketClosed, WebSocketClosing
 
 from curious.core import chunker as md_chunker
 from curious.core.event import EventContext, EventManager, event as ev_dec, scan_events
@@ -646,17 +646,18 @@ class Client(object):
                                   shard_id=shard_id, shard_count=shard_count) as gw:
             self._gateways[shard_id] = gw
 
-            try:
-                async with multio.asynclib.finalize_agen(gw.events()) as agen:
-                    async for event in agen:
-                        await self.fire_event(event[0], *event[1:], gateway=gw)
-            except WebSocketClosing:
-                logger.warning("Websocket closing, reconnecting...")
-            except Exception as e:  # kill the bot if we failed to parse something
-                await self.kill()
-                raise
-            finally:
-                self._gateways.pop(shard_id, None)
+            while True:
+                try:
+                    async with multio.asynclib.finalize_agen(gw.events()) as agen:
+                        async for event in agen:
+                            await self.fire_event(event[0], *event[1:], gateway=gw)
+                except (WebSocketClosing, WebSocketClosed):
+                    logger.warning("Websocket closing, reconnecting...")
+                except Exception as e:  # kill the bot if we failed to parse something
+                    await self.kill()
+                    raise
+                finally:
+                    self._gateways.pop(shard_id, None)
 
     async def start(self, shard_count: int):
         """
