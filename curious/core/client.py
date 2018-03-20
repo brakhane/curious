@@ -30,6 +30,7 @@ from types import MappingProxyType
 
 import collections
 import multio
+from lomond.errors import WebSocketClosing
 
 from curious.core import chunker as md_chunker
 from curious.core.event import EventContext, EventManager, event as ev_dec, scan_events
@@ -649,6 +650,8 @@ class Client(object):
                 async with multio.asynclib.finalize_agen(gw.events()) as agen:
                     async for event in agen:
                         await self.fire_event(event[0], *event[1:], gateway=gw)
+            except WebSocketClosing:
+                logger.warning("Websocket closing, reconnecting...")
             except Exception as e:  # kill the bot if we failed to parse something
                 await self.kill()
                 raise
