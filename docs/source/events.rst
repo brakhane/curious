@@ -34,6 +34,11 @@ State events
 
     Called when a bot has resumed the connection.
 
+.. py:function:: presences_replace(ctx: EventContext, count: int)
+    :async:
+
+    Called when presences are replaced.
+
 .. py:function:: guild_available(ctx: EventContext, guild: Guild)
     :async:
 
@@ -57,16 +62,6 @@ State events
 
     Called when a guild receives a Guild Member Chunk.
 
-.. py:function:: guild_sync(ctx: EventContext, guild: Guild, member_count: int, \
-    presence_count: int)
-    :async:
-
-    Called when a guild receives a Guild Sync.
-
-    .. note::
-
-        This is a **user-account only** event.
-
 .. py:function:: guild_unavailable(ctx: EventContext, guild: Guild)
     :async:
 
@@ -89,37 +84,6 @@ State events
     :async:
 
     Called when the emojis update in a guild.
-
-.. py:function:: user_settings_update(ctx: EventContext, \
-    old_settings: UserSettings, new_settings: UserSettings)
-    :async:
-
-    Called when a user's settings update.
-
-    .. note::
-
-        This is a **user-account only** event.
-
-
-.. py:function:: friend_update(ctx: EventContext, friend: RelationshipUser)
-    :async:
-
-    Called when a friend updates (name, presence).
-
-    .. note::
-
-        This is a **user-account only** event.
-
-.. py:function:: relationship_add(ctx: EventContext, user: RelationshipUser)
-    :async:
-
-    Called when a relationship is added.
-
-.. py:function:: relationship_remove(ctx: EventContext, user: \
-    RelationshipUser)
-    :async:
-
-    Called when a relationship is removed.
 
 .. py:function:: guild_member_update(ctx: EventContext, old_member: Member, \
     new_member: Member)

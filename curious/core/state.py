@@ -549,6 +549,8 @@ class State(object):
             async for y in gen:
                 yield y
 
+        yield "presences_replace", len(event_data)
+
     async def handle_guild_members_chunk(self, gw: 'gateway.GatewayHandler', event_data: dict):
         """
         Called when a chunk of members has arrived.
