@@ -17,10 +17,10 @@ Misc utilities used in commands related things.
 
 .. currentmodule:: curious.commands.utils
 """
-import collections
 import inspect
 from typing import Callable, Iterable, List, Union
 
+import collections
 import typing_inspect
 
 from curious.commands.exc import ConversionFailedError, MissingArgumentError
@@ -45,6 +45,18 @@ def get_full_name(func) -> str:
         func = func.cmd_parent
 
     return ' '.join(reversed(name))
+
+
+def stringify(ann):
+    """
+    Stringifies an annotation.
+    """
+    origin = typing_inspect.get_origin(ann)
+    if not origin:
+        return ann.__name__
+
+    args = typing_inspect.get_args(ann, evaluate=True)
+    return f"{origin.__name__}[{', '.join(arg.__name__ for arg in args)}]"
 
 
 async def _convert(ctx, tokens: List[str], signature: inspect.Signature):

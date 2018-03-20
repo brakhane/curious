@@ -128,7 +128,7 @@ def convert_list(ann, ctx, arg: str) -> List[Any]:
     """
     Converts a :class:`typing.List`.
     """
-    internal = typing_inspect.get_args(ann)[0]
+    internal = typing_inspect.get_args(ann, evaluate=True)[0]
     converter = ctx._lookup_converter(internal)
     sp = arg.split(" ")
     results = []
