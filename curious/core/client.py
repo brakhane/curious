@@ -21,7 +21,6 @@ This contains a definition for :class:`.Client` which is used to interface prima
 .. currentmodule:: curious.core.client
 """
 
-import collections
 import enum
 import functools
 import inspect
@@ -29,6 +28,7 @@ import logging
 import typing
 from types import MappingProxyType
 
+import collections
 import multio
 
 from curious.core import chunker as md_chunker
@@ -57,10 +57,7 @@ class BotType(enum.IntEnum):
     #: Regular bot. This signifies that the client should log in as a bot account.
     BOT = 1
 
-    #: User bot. This signifies that the client should log in as a user account.
-    USERBOT = 2
-
-    # 4 is reserved
+    # 2, 4 is reserved
 
     #: No bot responses. This signifies that the client should respond to ONLY USER messages.
     ONLY_USER = 8
@@ -130,9 +127,6 @@ class Client(object):
 
         #: The bot type for this bot.
         self.bot_type = bot_type
-
-        if self.bot_type & BotType.BOT and self.bot_type & BotType.USERBOT:
-            raise ValueError("Bot cannot be a bot and a userbot at the same time")
 
         #: The current :class:`.EventManager` for this bot.
         self.events = EventManager()
@@ -217,6 +211,13 @@ class Client(object):
         Finds a channel by channel ID.
         """
         return self.state.find_channel(channel_id)
+
+    async def _background_get_app_info(self):
+        """
+        Gets the application info in the background.
+        """
+        appinfo = AppInfo(self, **(await self.http.get_app_info(None)))
+        self.application_info = appinfo
 
     async def get_gateway_url(self) -> str:
         """
@@ -660,9 +661,6 @@ class Client(object):
 
         :param shard_count: The number of shards to boot.
         """
-        if self.bot_type & BotType.BOT:
-            self.application_info = AppInfo(self, **(await self.http.get_app_info(None)))
-
         # update ready state
         for shard_id in range(shard_count):
             self._ready_state[shard_id] = False
@@ -670,6 +668,8 @@ class Client(object):
         async with multio.asynclib.task_manager() as tg:
             self.task_manager = tg
             self.events.task_manager = tg
+
+            await multio.asynclib.spawn(tg, self._background_get_app_info)
 
             for shard_id in range(0, shard_count):
                 await multio.asynclib.spawn(tg, self.handle_shard, shard_id, shard_count)
