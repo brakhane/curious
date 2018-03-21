@@ -44,6 +44,10 @@ _fmt = "DiscordBot (https://github.com/SunDwarf/curious {0}) Python/{1[0]}.{1[1]
 USER_AGENT = _fmt.format(__version__, sys.version_info)
 del _fmt
 
+# ensure we have contextvars available
+from curious.internal import contextvars_inject
+contextvars_inject()
+
 
 from curious.core.client import BotType, Client
 from curious.core.event import EventContext, event
