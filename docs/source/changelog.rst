@@ -3,6 +3,16 @@ Changelog
 
 This document displays the differences between each release of curious.
 
+1.0.0
+-----
+
+ - Make :class:`.EventContext` into a contextvar.
+
+ - Re-arrange the event management code into a package.
+
+ - Add :mod:`curious.internals` for scary internal stuff.
+
+
 0.7.7 (Released 2018-04-04)
 ---------------------------
 
@@ -23,6 +33,7 @@ This document displays the differences between each release of curious.
 ---------------------------
 
  - Don't crash when trying to fill in guild fields without a cached guild.
+
 
 0.7.4 (Released 2018-03-27)
 ---------------------------

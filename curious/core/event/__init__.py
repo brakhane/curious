@@ -15,6 +15,15 @@
 
 """
 Event management utilities.
+
+.. currentmodule:: curious.core.event
+
+.. autosummary::
+    :toctree:
+
+    manager
+    decorator
+    context
 """
 import inspect
 import typing
@@ -22,6 +31,12 @@ import typing
 from curious.core.event.context import EventContext, event_context
 from curious.core.event.decorator import event
 from curious.core.event.manager import EventManager
+
+__all__ = [
+    "EventContext", "event_context",
+    "event",
+    "EventManager"
+]
 
 
 def scan_events(obb) -> typing.Generator[None, typing.Tuple[str, typing.Any], None]:
