@@ -36,7 +36,7 @@ from curious.commands.plugin import Plugin
 from curious.commands.ratelimit import RateLimiter
 from curious.commands.utils import prefix_check_factory
 from curious.core import client as md_client
-from curious.core.event import EventContext, event
+from curious.core.event import event, event_context
 from curious.dataclasses.message import Message
 
 logger = logging.getLogger("curious.commands.manager")
@@ -317,7 +317,7 @@ class CommandsManager(object):
         del sys.modules[import_path]
         del self._module_plugins[import_path]
 
-    async def event_hook(self, ctx: EventContext, *args, **kwargs):
+    async def event_hook(self, *args, **kwargs):
         """
         The event hook for the commands manager.
         """
@@ -325,15 +325,15 @@ class CommandsManager(object):
             for plugin in self.plugins.values():
                 body = inspect.getmembers(plugin, predicate=lambda v: hasattr(v, "is_event"))
                 for _, handler in body:
-                    if ctx.event_name not in handler.events:
+                    if event_context.event_name not in handler.events:
                         continue
 
                     cofunc = partial(self.client.events._safety_wrapper,
-                                     handler, ctx, *args, **kwargs)
+                                     handler, *args, **kwargs)
 
                     await multio.asynclib.spawn(tg, cofunc)
 
-    async def handle_commands(self, ctx: EventContext, message: Message):
+    async def handle_commands(self, message: Message):
         """
         Handles commands for a message.
         """
@@ -366,7 +366,7 @@ class CommandsManager(object):
         command_word, tokens = matched
 
         # step 2, create the new commands context
-        ctx = Context(event_context=ctx, message=message)
+        ctx = Context(event_context=event_context.unwrap_context(), message=message)
         ctx.command_name = command_word
         ctx.tokens = tokens
         ctx.manager = self
@@ -375,7 +375,7 @@ class CommandsManager(object):
         await ctx.try_invoke()
 
     @event("command_error")
-    async def default_command_error(self, ev_ctx: EventContext, ctx: Context, err: CommandsError):
+    async def default_command_error(self, ctx: Context, err: CommandsError):
         """
         Handles command errors by default.
         """
@@ -388,8 +388,8 @@ class CommandsManager(object):
         logger.error(f"Error in command!\n{fmtted}")
 
     @event("message_create")
-    async def handle_message(self, ctx: EventContext, message: Message):
+    async def handle_message(self, message: Message):
         """
         Registered as the event handler in a client for handling commands.
         """
-        return await self.handle_commands(ctx, message)
+        return await self.handle_commands(message)

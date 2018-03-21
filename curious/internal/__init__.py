@@ -7,10 +7,5 @@ init is considered a stable API, and anything not is an unstable, not-for-usage 
 .. autosummary::
     :toctree:
 
-    contextvars_inject
+    proxy
 """
-from curious.internal.contextvars_inject import contextvars_inject
-
-__all__ = [
-    "contextvars_inject"
-]

@@ -30,10 +30,9 @@ from types import MappingProxyType
 
 import collections
 import multio
-from lomond.errors import WebSocketClosed, WebSocketClosing
 
 from curious.core import chunker as md_chunker
-from curious.core.event import EventContext, EventManager, event as ev_dec, scan_events
+from curious.core.event import EventManager, event as ev_dec, event_context, scan_events
 from curious.core.gateway import GatewayHandler, open_websocket
 from curious.core.httpclient import HTTPClient
 from curious.dataclasses import channel as dt_channel, guild as dt_guild, member as dt_member
@@ -584,7 +583,7 @@ class Client(object):
         return guild
 
     @ev_dec(name="gateway_dispatch_received")
-    async def handle_dispatches(self, ctx: EventContext, name: str, dispatch: dict):
+    async def handle_dispatches(self, name: str, dispatch: dict):
         """
         Handles dispatches for the client.
         """
@@ -598,14 +597,15 @@ class Client(object):
             logger.debug(f"Processing event {name}")
 
         try:
-            result = handler(ctx.gateway, dispatch)
+            result = handler(event_context.gateway, dispatch)
 
             if inspect.isawaitable(result):
                 result = await result
             elif inspect.isasyncgen(result):
                 async with multio.asynclib.finalize_agen(result) as gen:
                     async for i in gen:
-                        await self.events.fire_event(i[0], *i[1:], gateway=ctx.gateway, client=self)
+                        await self.events.fire_event(i[0], *i[1:], gateway=event_context.gateway,
+                                                     client=self)
 
                 # no more processing after the async gen
                 return
@@ -622,10 +622,11 @@ class Client(object):
             raise
 
     @ev_dec(name="ready")
-    async def handle_ready(self, ctx: 'EventContext'):
+    async def handle_ready(self):
         """
         Handles a READY event, dispatching a ``shards_ready`` event when all shards are ready.
         """
+        ctx = event_context
         self._ready_state[ctx.shard_id] = True
 
         if not all(self._ready_state.values()):
@@ -646,18 +647,15 @@ class Client(object):
                                   shard_id=shard_id, shard_count=shard_count) as gw:
             self._gateways[shard_id] = gw
 
-            while True:
-                try:
-                    async with multio.asynclib.finalize_agen(gw.events()) as agen:
-                        async for event in agen:
-                            await self.fire_event(event[0], *event[1:], gateway=gw)
-                except (WebSocketClosing, WebSocketClosed):
-                    logger.warning("Websocket closing, reconnecting...")
-                except Exception as e:  # kill the bot if we failed to parse something
-                    await self.kill()
-                    raise
-                finally:
-                    self._gateways.pop(shard_id, None)
+            try:
+                async with multio.asynclib.finalize_agen(gw.events()) as agen:
+                    async for event in agen:
+                        await self.fire_event(event[0], *event[1:], gateway=gw)
+            except Exception as e:  # kill the bot if we failed to parse something
+                await self.kill()
+                raise
+            finally:
+                self._gateways.pop(shard_id, None)
 
     async def start(self, shard_count: int):
         """
@@ -695,7 +693,7 @@ class Client(object):
         """
         Kills the bot by closing all shards.
         """
-        for gateway in self._gateways.values():
+        for gateway in self._gateways.copy().values():
             await gateway.close(code=1006, reason="Bot killed", reconnect=False)
 
     def run(self, *, shard_count: int = 1, autoshard: bool = True, **kwargs):
