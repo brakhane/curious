@@ -611,9 +611,9 @@ class Client(object):
                 return
 
             if not isinstance(result, tuple):
-                await self.events.fire_event(result, gateway=ctx.gateway, client=self)
+                await self.events.fire_event(result, gateway=event_context.gateway, client=self)
             else:
-                await self.events.fire_event(result[0], *result[1:], gateway=ctx.gateway,
+                await self.events.fire_event(result[0], *result[1:], gateway=event_context.gateway,
                                              client=self)
 
         except Exception:
