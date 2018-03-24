@@ -4,7 +4,7 @@ Utilities for ratelimiting a command.
 import time
 from typing import Any, Callable, List, Tuple
 
-from curious.commands import Context
+from curious.commands.context import Context
 from curious.commands.exc import CommandRateLimited
 
 

@@ -59,7 +59,7 @@ def stringify(ann):
     return f"{origin.__name__}[{', '.join(arg.__name__ for arg in args)}]"
 
 
-async def _convert(ctx, tokens: List[str], signature: inspect.Signature):
+async def _convert(ctx, tokens: List[str], signature: inspect.Signature, skip_ctx: bool = False):
     """
     Converts tokens passed from discord, using a signature.
     """
@@ -76,7 +76,7 @@ async def _convert(ctx, tokens: List[str], signature: inspect.Signature):
 
     args_it = iter(tokens)
     for n, (name, param) in enumerate(signature.parameters.items()):
-        if n == 0:
+        if n == 0 and skip_ctx:
             # Don't convert the `ctx` argument.
             continue
 

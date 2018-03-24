@@ -20,6 +20,7 @@ Class for the commands context.
 """
 import inspect
 import types
+from contextvars import ContextVar
 from typing import Any, Callable, List, Tuple, Type, Union
 
 import typing_inspect
@@ -35,11 +36,28 @@ from curious.dataclasses.member import Member
 from curious.dataclasses.message import Message
 from curious.dataclasses.role import Role
 from curious.dataclasses.user import User
+from curious.internal.proxy import ProxyLookupVar
+
+#: The current command context.
+command_context = ContextVar("command_context")
+
+# proxy lookups
+#: The channel for the current command context.
+channel: Channel = ProxyLookupVar(command_context, "channel")  # type: ignore
+#: The message for the current command context.
+message: Message = ProxyLookupVar(command_context, "message")  # type: ignore
+#: The author for the current command context.
+author: Union[User, Member] = ProxyLookupVar(command_context, "author")  # type: ignore
+#: The guild for the current command context.
+guild: Guild = ProxyLookupVar(command_context, "guild")  # type: ignore
 
 
 class Context(object):
     """
     A class that represents the context for a command.
+
+    To get the current context, use :attr:`.command_context`, which is a
+    :class:`contextvars.ContextVar` which stores the current context running.
     """
     _converters = {
         Channel: convert_channel,
@@ -84,7 +102,7 @@ class Context(object):
         self.bot = event_context.bot
 
     @classmethod
-    def add_converter(cls, type_: Type[Any], converter: 'Callable[[Context, str], Any]'):
+    def add_converter(cls, type_: Type[Any], converter: 'Callable[[_Context, str], Any]'):
         """
         Adds a converter to the mapping of converters.
 
@@ -157,7 +175,8 @@ class Context(object):
         """
         Gets the converted args and kwargs for this command, based on the tokens.
         """
-        return await _convert(self, self.tokens, inspect.signature(func))
+        return await _convert(self, self.tokens, inspect.signature(func),
+                              skip_ctx=getattr(func, "cmd_pass_ctx", False))
 
     def _make_reraise_ctx(self, new_name: str) -> EventContext:
         """
@@ -268,13 +287,20 @@ class Context(object):
         # convert all the arguments into the command
         converted_args, converted_kwargs = await self._get_converted_args(matched_command)
 
+        # setup context
+        token = command_context.set(self)
+
         # finally, spawn the new command task
         try:
-            return await matched_command(self, *converted_args, **converted_kwargs)
+            if getattr(matched_command, "cmd_pass_ctx", False):
+                converted_args = (self, *converted_args)
+            return await matched_command(*converted_args, **converted_kwargs)
         except CommandsError:
             raise
         except Exception as e:
             raise CommandInvokeError(self) from e
+        finally:
+            command_context.reset(token)
 
     async def try_invoke(self) -> Any:
         """

@@ -365,7 +365,7 @@ class CommandsManager(object):
         # deconstruct the tuple returned into more useful variables than a single tuple
         command_word, tokens = matched
 
-        # step 2, create the new commands context
+        # step 2, create the new command state
         ctx = Context(event_context=event_context.unwrap_context(), message=message)
         ctx.command_name = command_word
         ctx.tokens = tokens

@@ -32,7 +32,8 @@ setup(
     },
     packages=['curious', 'curious.core', 'curious.core._ws_wrapper',
               'curious.commands', 'curious.dataclasses',
-              'curious.ext.paginator', 'curious.ipc'],
+              'curious.ext.paginator', 'curious.ipc',
+              'curious.internal', 'curious.boot'],
     url='https://github.com/SunDwarf/curious',
     license='LGPLv3',
     author='Laura Dickinson',
@@ -52,13 +53,12 @@ setup(
     ],
     install_requires=install_requires,
     extras_require={
-        "voice": ["opuslib==1.1.0",
-                  "PyNaCL==1.0.1"],
-        "docs": [
-            "sphinx_py3doc_enhanced_theme",
-            "sphinx",
-            "sphinxcontrib-asyncio",
-            "sphinx-autodoc-typehints",
-        ]
+        "boot": {
+            "click",
+            "ruamel.yaml"
+        }
+    },
+    entry_points={
+        "console_scripts": ['curious=curious.boot._entry_point:basculin']
     },
 )

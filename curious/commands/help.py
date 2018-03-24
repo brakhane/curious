@@ -20,7 +20,7 @@ Home of the default help command.
 """
 import inspect
 
-from curious.commands import Context
+from curious.commands.context import Context
 from curious.commands.exc import CommandsError
 from curious.commands.utils import get_full_name, get_usage
 

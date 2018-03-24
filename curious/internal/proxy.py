@@ -43,3 +43,22 @@ class ProxyVar(object):
         Unwraps this context to get the data of the underlying object.
         """
         return self._cvar.get()
+
+
+class ProxyLookupVar(ProxyVar):
+    """
+    Proxies attribute access to an attribute onto a context var.
+    """
+    def __init__(self, cvar: ContextVar, attr: str):
+        super().__init__(cvar)
+        self.__dict__['_attr'] = attr
+
+    def __getattr__(self, item):
+        return getattr(super().__getattr__(self._attr), item)
+
+    def __setattr__(self, key, value):
+        attr = getattr(self._cvar.get(), self._attr)
+        return setattr(attr, key, value)
+
+    def unwrap_context(self):
+        return getattr(super().unwrap_context(), self._attr)
