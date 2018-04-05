@@ -12,6 +12,19 @@ This document displays the differences between each release of curious.
 
  - Add :mod:`curious.internals` for scary internal stuff.
 
+ - Refactor dataclass code significantly.
+
+    - The :class:`.Client` is no longer passed around everywhere.
+
+    - The current bot can be gotten with :attr:`.current_bot`.
+
+ - Make :class:`.Context` into a contextvar.
+
+    - Add new context variables :attr:`curious.commands.context.cmd_context`,
+      :attr:`curious.commands.context.channel`, :attr:`curious.commands.context.author`,
+      :attr:`curious.commands.context.guild` and :attr:`curious.commands.context.message`.
+
+ - Add a plugin -> command cache, that is baked during :meth:`.Plugin._get_commands`.
 
 0.7.7 (Released 2018-04-04)
 ---------------------------
