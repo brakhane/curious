@@ -182,7 +182,7 @@ class EventManager(object):
         p = multio.Promise()
         errored = False
 
-        async def listener(ctx, *args):
+        async def listener(*args):
             # exit immediately if the predicate is none
             if predicate is None:
                 await p.set(args)

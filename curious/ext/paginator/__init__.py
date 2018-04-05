@@ -125,7 +125,7 @@ class ReactionsPaginator(object):
 
         self._running = True
 
-        async def consume_reaction(ctx, message: Message, author: Member, reaction: Reaction):
+        async def consume_reaction(message: Message, author: Member, reaction: Reaction):
             """
             Consumes reaction events and places them on a queue.
             """
