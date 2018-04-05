@@ -23,6 +23,7 @@ from typing import List
 
 import collections
 
+from curious.core import current_bot
 from curious.dataclasses import guild as dt_guild, role as dt_role, user as dt_user, \
     voice_state as dt_vs
 from curious.dataclasses.bases import Dataclass
@@ -36,6 +37,7 @@ class Nickname(object):
     """
     Represents the nickname of a :class:`.Member`.
     """
+
     def __init__(self, parent: 'Member', value: str):
         self.parent = parent
         self.value = value
@@ -92,9 +94,10 @@ class Nickname(object):
         async def _listener(before, after):
             return after.guild == guild and after.id == self.parent.id
 
-        async with self.parent._bot.events.wait_for_manager("guild_member_update", _listener):
-            await self.parent._bot.http.change_nickname(guild.id, new_nickname,
-                                                        member_id=self.parent.id, me=me)
+        bot = current_bot.get()
+        async with bot.events.wait_for_manager("guild_member_update", _listener):
+            await bot.http.change_nickname(guild.id, new_nickname,
+                                           member_id=self.parent.id, me=me)
 
         # the wait_for means at this point the nickname has been changed
         return self.parent.nickname
@@ -174,9 +177,10 @@ class MemberRoleContainer(collections.Sequence):
 
             return True
 
-        async with self._member._bot.events.wait_for_manager("guild_member_update", _listener):
+        bot = current_bot.get()
+        async with bot.events.wait_for_manager("guild_member_update", _listener):
             role_ids = set([_r.id for _r in self._member.roles] + [_r.id for _r in roles])
-            await self._member._bot.http.edit_member_roles(
+            await bot.http.edit_member_roles(
                 self._member.guild_id, self._member.id, role_ids
             )
 
@@ -207,9 +211,10 @@ class MemberRoleContainer(collections.Sequence):
         # Calculate the roles to keep.
         to_keep = set(self._member.roles) - set(roles)
 
-        async with self._member._bot.events.wait_for_manager("guild_member_update", _listener):
+        bot = current_bot.get()
+        async with bot.events.wait_for_manager("guild_member_update", _listener):
             role_ids = set([_r.id for _r in to_keep])
-            await self._member._bot.http.edit_member_roles(self._member.guild_id, self._member.id,
+            await bot.http.edit_member_roles(self._member.guild_id, self._member.id,
                                                            role_ids)
 
 
@@ -221,12 +226,12 @@ class Member(Dataclass):
     __slots__ = ("_user_data", "role_ids", "joined_at", "_nickname", "guild_id", "presence",
                  "roles")
 
-    def __init__(self, client, **kwargs):
-        super().__init__(kwargs["user"]["id"], client)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(kwargs["user"]["id"])
 
         # copy user data for when the user is decached
         self._user_data = kwargs["user"]
-        self._bot.state.make_user(self._user_data)
+        current_bot.get().state.make_user(self._user_data)
 
         #: An iterable of role IDs this member has.
         self.role_ids = [int(rid) for rid in kwargs.get("roles", [])]
@@ -253,7 +258,7 @@ class Member(Dataclass):
         """
         :return: The :class:`.Guild` associated with this member.
         """
-        return self._bot.guilds.get(self.guild_id)
+        return current_bot.get().guilds.get(self.guild_id)
 
     @property
     def voice(self) -> 'dt_vs.VoiceState':
@@ -296,7 +301,6 @@ class Member(Dataclass):
         Copies a member object.
         """
         new_object = object.__new__(self.__class__)  # type: Member
-        new_object._bot = self._bot
 
         new_object.id = self.id
         new_object.role_ids = self.role_ids.copy()
@@ -309,8 +313,8 @@ class Member(Dataclass):
 
     def __del__(self):
         try:
-            self._bot.state._check_decache_user(self.id)
-        except AttributeError:
+            current_bot.get().state._check_decache_user(self.id)
+        except (AttributeError, LookupError):
             # during shutdown
             pass
 
@@ -320,10 +324,10 @@ class Member(Dataclass):
         :return: The underlying :class:`.User` for this member.
         """
         try:
-            return self._bot.state._users[self.id]
+            return current_bot.get().state._users[self.id]
         except KeyError:
             # don't go through make_user as it'll cache it
-            return dt_user.User(self._bot, **self._user_data)
+            return dt_user.User(current_bot.get(), **self._user_data)
 
     @property
     def name(self) -> str:

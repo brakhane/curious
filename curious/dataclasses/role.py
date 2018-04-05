@@ -21,6 +21,7 @@ Wrappers for Role objects.
 
 import functools
 
+from curious.core import current_bot
 from curious.dataclasses import guild as dt_guild, member as dt_member, \
     permissions as dt_permissions
 from curious.dataclasses.bases import Dataclass
@@ -37,6 +38,7 @@ class _MentionableRole(object):
             await ctx.channel.messages.send(role.mention)
             
     """
+
     def __init__(self, r: 'Role'):
         self.role = r
 
@@ -62,8 +64,8 @@ class Role(Dataclass):
     __slots__ = "name", "colour", "hoisted", "mentionable", "permissions", "managed", "position", \
                 "guild_id"
 
-    def __init__(self, client, **kwargs) -> None:
-        super().__init__(kwargs.get("id"), client)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(kwargs.get("id"))
 
         #: The name of this role.
         self.name = kwargs.get("name", None)
@@ -118,7 +120,7 @@ class Role(Dataclass):
         """
         :return: The :class:`.Guild` associated with this role. 
         """
-        return self._bot.guilds[self.guild_id]
+        return current_bot.get().guilds[self.guild_id]
 
     @property
     def is_default_role(self) -> bool:
@@ -183,7 +185,7 @@ class Role(Dataclass):
         if not self.guild.me.guild_permissions.manage_roles:
             raise PermissionsError("manage_roles")
 
-        await self._bot.http.delete_role(self.guild.id, self.id)
+        await current_bot.get().http.delete_role(self.guild.id, self.id)
         return self
 
     async def edit(self, *,
@@ -207,8 +209,9 @@ class Role(Dataclass):
             if isinstance(permissions, dt_permissions.Permissions):
                 permissions = permissions.bitfield
 
-        async with self._bot.events.wait_for_manager("role_update", lambda b, a: a.id == self.id):
-            await self._bot.http.edit_role(self.guild_id, self.id,
-                                           name=name, permissions=permissions, colour=colour,
-                                           hoist=hoist, position=position, mentionable=mentionable)
+        bot = current_bot.get()
+        async with bot.events.wait_for_manager("role_update", lambda b, a: a.id == self.id):
+            await bot.http.edit_role(self.guild_id, self.id,
+                                     name=name, permissions=permissions, colour=colour,
+                                     hoist=hoist, position=position, mentionable=mentionable)
         return self

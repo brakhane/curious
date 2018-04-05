@@ -22,6 +22,7 @@ import enum
 import re
 import typing
 
+from curious.core import current_bot
 from curious.dataclasses import channel as dt_channel, emoji as dt_emoji, guild as dt_guild, \
     invite as dt_invite, member as dt_member, role as dt_role, user as dt_user, \
     webhook as dt_webhook
@@ -75,8 +76,8 @@ class Message(Dataclass):
                  "attachments", "_mentions", "_role_mentions", "reactions", "channel_id",
                  "author_id", "type")
 
-    def __init__(self, client, **kwargs):
-        super().__init__(kwargs.get("id"), client)
+    def __init__(self, **kwargs):
+        super().__init__(kwargs.get("id"))
 
         #: The content of the message.
         self.content = kwargs.get("content", None)  # type: str
@@ -119,7 +120,7 @@ class Message(Dataclass):
         self.attachments = []
 
         for attachment in kwargs.get("attachments", []):
-            self.attachments.append(Attachment(bot=self._bot, **attachment))
+            self.attachments.append(Attachment(**attachment))
 
         #: The mentions for this message.
         #: This is UNORDERED.
@@ -150,7 +151,7 @@ class Message(Dataclass):
         """
         :return: The :class:`.Channel` this message is associated with.
         """
-        return self._bot.state.find_channel(self.channel_id)
+        return current_bot.get().state.find_channel(self.channel_id)
 
     @property
     def mentions(self) -> 'typing.List[dt_member.Member]':
@@ -211,7 +212,7 @@ class Message(Dataclass):
         """
         Gets the cleaned content for this message.
         """
-        return await self._bot.clean_content(self.content)
+        return await current_bot.get().clean_content(self.content)
 
     async def get_invites(self) -> 'typing.List[dt_invite.Invite]':
         """
@@ -226,7 +227,7 @@ class Message(Dataclass):
                 code = match[1]
 
             try:
-                obbs.append(await self._bot.get_invite(code))
+                obbs.append(await current_bot.get().get_invite(code))
             except HTTPException as e:
                 if e.error_code != ErrorCode.UNKNOWN_INVITE:
                     raise
@@ -257,9 +258,9 @@ class Message(Dataclass):
                 id = int(mention["id"])
                 obb = self.guild.members.get(id)
                 if obb is None:
-                    obb = self._bot.state.make_user(mention)
+                    obb = current_bot.get().state.make_user(mention)
                     # always check for a decache
-                    self._bot.state._check_decache_user(id)
+                    current_bot.get().state._check_decache_user(id)
             elif type_ == "role":
                 obb = self.guild.roles.get(int(mention))
             elif type_ == "channel":
@@ -291,7 +292,7 @@ class Message(Dataclass):
         message.
         """
         if self.guild is None:
-            me = self._bot.user.id
+            me = current_bot.get().user.id
             has_manage_messages = False
         else:
             me = self.guild.me.id
@@ -300,7 +301,7 @@ class Message(Dataclass):
         if self.id != me and not has_manage_messages:
             raise PermissionsError("manage_messages")
 
-        await self._bot.http.delete_message(self.channel.id, self.id)
+        await current_bot.get().http.delete_message(self.channel.id, self.id)
 
     async def edit(self, new_content: str = None, *,
                    embed: Embed = None) -> 'Message':
@@ -324,9 +325,9 @@ class Message(Dataclass):
         if embed:
             embed = embed.to_dict()
 
-        async with self._bot.events.wait_for_manager("message_update",
+        async with current_bot.get().events.wait_for_manager("message_update",
                                                      lambda o, n: n.id == self.id):
-            await self._bot.http.edit_message(self.channel.id, self.id, content=new_content,
+            await current_bot.get().http.edit_message(self.channel.id, self.id, content=new_content,
                                               embed=embed)
         return self
 
@@ -340,7 +341,7 @@ class Message(Dataclass):
             if not self.channel.permissions(self.guild.me).manage_messages:
                 raise PermissionsError("manage_messages")
 
-        await self._bot.http.pin_message(self.channel.id, self.id)
+        await current_bot.get().http.pin_message(self.channel.id, self.id)
         return self
 
     async def unpin(self) -> 'Message':
@@ -354,7 +355,7 @@ class Message(Dataclass):
             if not self.channel.permissions(self.guild.me).manage_messages:
                 raise PermissionsError("manage_messages")
 
-        await self._bot.http.unpin_message(self.channel.id, self.id)
+        await current_bot.get().http.unpin_message(self.channel.id, self.id)
         return self
 
     async def get_who_reacted(self, emoji: 'typing.Union[dt_emoji.Emoji, str]') \
@@ -368,17 +369,17 @@ class Message(Dataclass):
         if isinstance(emoji, dt_emoji.Emoji):
             emoji = "{}:{}".format(emoji.name, emoji.id)
 
-        reactions = await self._bot.http.get_reaction_users(self.channel.id, self.id, emoji)
+        reactions = await current_bot.get().http.get_reaction_users(self.channel.id, self.id, emoji)
         result = []
 
         for user in reactions:
             member_id = int(user.get("id"))
             if self.guild is None:
-                result.append(dt_user.User(self._bot, **user))
+                result.append(dt_user.User(current_bot.get(), **user))
             else:
                 member = self.guild.members.get(member_id)
                 if not member:
-                    result.append(dt_user.User(self._bot, **user))
+                    result.append(dt_user.User(current_bot.get(), **user))
                 else:
                     result.append(member)
 
@@ -404,7 +405,7 @@ class Message(Dataclass):
             # undocumented!
             emoji = "{}:{}".format(emoji.name, emoji.id)
 
-        await self._bot.http.add_reaction(self.channel.id, self.id, emoji)
+        await current_bot.get().http.add_reaction(self.channel.id, self.id, emoji)
 
     async def unreact(self, reaction: 'typing.Union[dt_emoji.Emoji, str]',
                       victim: 'dt_member.Member' = None):
@@ -427,7 +428,7 @@ class Message(Dataclass):
         else:
             emoji = reaction
 
-        await self._bot.http.delete_reaction(self.channel.id, self.id, emoji,
+        await current_bot.get().http.delete_reaction(self.channel.id, self.id, emoji,
                                              victim=victim.id if victim else None)
 
     async def remove_all_reactions(self) -> None:
@@ -440,4 +441,4 @@ class Message(Dataclass):
         if not self.channel.permissions(self.guild.me).manage_messages:
             raise PermissionsError("manage_messages")
 
-        await self._bot.http.delete_all_reactions(self.channel.id, self.id)
+        await current_bot.get().http.delete_all_reactions(self.channel.id, self.id)

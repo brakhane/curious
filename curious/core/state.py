@@ -319,7 +319,7 @@ class State(object):
         # ensure the webhook user is decached
         self._check_decache_user(user.id)
         user.bot = True
-        webhook = Webhook(client=self.client, webhook_id=webhook_id, **event_data)
+        webhook = Webhook(webhook_id=webhook_id, **event_data)
         webhook.guild_id = channel.guild_id
         webhook.channel_id = channel.id
         webhook.user = user
@@ -343,7 +343,7 @@ class State(object):
         :param channel_data: The channel data to cache.
         :return: A new :class:`.Channel`.
         """
-        channel = Channel(self.client, **channel_data)
+        channel = Channel(**channel_data)
         self._private_channels[channel.id] = channel
 
         return channel
@@ -363,7 +363,7 @@ class State(object):
         if id in self._users and not override_cache:
             return self._users[id]
 
-        user = user_klass(self.client, **user_data)
+        user = user_klass(**user_data)
         self._users[user.id] = user
 
         return user
@@ -376,7 +376,7 @@ class State(object):
         :param cache: Should this message be cached?
         :return: A new :class:`.Message` object for the message.
         """
-        message = Message(self.client, **event_data)
+        message = Message(**event_data)
 
         if message in self.messages:
             # don't bother re-caching
@@ -448,7 +448,7 @@ class State(object):
         Called when READY is dispatched.
         """
         # Create our bot user.
-        self._user = BotUser(self.client, **event_data.get("user"))
+        self._user = BotUser(**event_data.get("user"))
         # cache ourselves
         self._users[self._user.id] = self._user
 
@@ -459,7 +459,7 @@ class State(object):
 
         # Create all of the guilds.
         for guild in event_data.get("guilds", []):
-            new_guild = Guild(self.client, **guild)
+            new_guild = Guild(**guild)
             self._guilds[new_guild.id] = new_guild
             new_guild.from_guild_create(**guild)
             new_guild.shard_id = gw.gw_state.shard_id
@@ -517,7 +517,7 @@ class State(object):
         if member is None:
             # create the member from the presence
             # we only pass the User here as we're about to update everything
-            member = Member(client=self.client, user=event_data["user"])
+            member = Member(user=event_data["user"])
             old_member = None
         else:
             old_member = member._copy()
@@ -586,7 +586,7 @@ class State(object):
             guild.from_guild_create(**event_data)
         else:
             had_guild = False
-            guild = Guild(self.client, **event_data)
+            guild = Guild(**event_data)
             self._guilds[guild.id] = guild
             guild.from_guild_create(**event_data)
 
@@ -906,7 +906,7 @@ class State(object):
         if not guild:
             return
 
-        member = Member(self.client, **event_data)
+        member = Member(**event_data)
         member.guild_id = guild.id
 
         guild._members[member.id] = member
@@ -1003,7 +1003,7 @@ class State(object):
         guild_id = int(event_data.get("guild_id", 0))
         guild = self._guilds.get(guild_id)
 
-        channel = Channel(self.client, **event_data)
+        channel = Channel(**event_data)
         if channel.private:
             self._private_channels[channel.id] = channel
         else:
@@ -1075,7 +1075,7 @@ class State(object):
             return
 
         if role_id not in guild._roles:
-            role = Role(self.client, **role_data)
+            role = Role(**role_data)
             role.guild_id = guild.id
             guild._roles[role_id] = role
         else:

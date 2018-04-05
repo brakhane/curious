@@ -24,8 +24,6 @@ import sys
 import threading
 from contextlib import contextmanager
 
-from curious.core import client
-
 DISCORD_EPOCH = 1420070400000
 
 _allowing_external_makes = threading.local()
@@ -93,7 +91,7 @@ class Dataclass(IDObject):
     """
 
     # __weakref__ is used to allow weakreffing
-    __slots__ = "_bot", "__weakref__"
+    __slots__ = "__weakref__",
 
     @staticmethod
     def __new__(cls, *args, **kwargs):
@@ -129,8 +127,3 @@ class Dataclass(IDObject):
                 del frameinfo, frame
 
         return object.__new__(cls)
-
-    def __init__(self, id: int, cl: 'client.Client'):
-        super().__init__(id)
-
-        self._bot = cl

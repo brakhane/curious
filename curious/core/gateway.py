@@ -507,4 +507,5 @@ async def open_websocket(token: str, url: str, *,
         finally:
             # make sure we don't die on closing the task group
             await gw._stop_heartbeating.set()
+            logger.info("Closing gateway...")
             await gw.close(code=1000, reason="Closing bot")

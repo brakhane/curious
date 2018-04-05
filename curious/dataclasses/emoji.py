@@ -21,6 +21,7 @@ Wrappers for custom emojis in guilds.
 
 import typing
 
+from curious.core import current_bot
 from curious.dataclasses import guild as dt_guild, role as dt_role
 from curious.dataclasses.bases import Dataclass
 
@@ -32,7 +33,7 @@ class Emoji(Dataclass):
     __slots__ = ("id", "name", "role_ids", "require_colons", "managed", "guild_id", "animated")
 
     def __init__(self, **kwargs):
-        super().__init__(int(kwargs.get("id")), kwargs.get("client"))
+        super().__init__(int(kwargs.get("id")))
 
         #: The name of this emoji.
         self.name = kwargs.get("name", None)  # type: str
@@ -80,7 +81,7 @@ class Emoji(Dataclass):
         if roles is not None:
             roles = [r.id for r in roles]
 
-        await self._bot.http.edit_guild_emoji(guild_id=self.guild_id, emoji_id=self.id,
+        await current_bot.get().http.edit_guild_emoji(guild_id=self.guild_id, emoji_id=self.id,
                                               name=name, roles=roles)
         return self
 
@@ -88,14 +89,14 @@ class Emoji(Dataclass):
         """
         Deletes this emoji.
         """
-        await self._bot.http.delete_guild_emoji(self.guild_id, emoji_id=self.id)
+        await current_bot.get().http.delete_guild_emoji(self.guild_id, emoji_id=self.id)
 
     @property
     def guild(self) -> 'dt_guild.Guild':
         """
         :return: The :class:`.Guild` this emoji object is associated with.
         """
-        return self._bot.guilds.get(self.guild_id)
+        return current_bot.get().guilds.get(self.guild_id)
 
     @property
     def roles(self) -> 'typing.List[dt_role.Role]':

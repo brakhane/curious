@@ -12,7 +12,7 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with curious.  If not, see <http://www.gnu.org/licenses/>.
-
+from curious.core import current_bot
 from curious.dataclasses.bases import Dataclass
 
 
@@ -20,8 +20,8 @@ class Attachment(Dataclass):
     """
     Represents an attachment.
     """
-    def __init__(self, id: int, bot, **kwargs):
-        super().__init__(id, cl=bot)
+    def __init__(self, id: int, **kwargs):
+        super().__init__(id)
 
         #: The filename for this attachment.
         self.filename: str = kwargs.get("filename")
@@ -46,5 +46,5 @@ class Attachment(Dataclass):
         Downloads the attachment into bytes.
         """
         bucket = ("attachment", self.id)
-        data = await self._bot.http.request(bucket, method="GET", uri=self.proxy_url)
+        data = await current_bot.get().http.request(bucket, method="GET", uri=self.proxy_url)
         return data

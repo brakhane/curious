@@ -31,7 +31,7 @@ from types import MappingProxyType
 import collections
 import multio
 
-from curious.core import chunker as md_chunker
+from curious.core import chunker as md_chunker, current_bot
 from curious.core.event import EventManager, event as ev_dec, event_context, scan_events
 from curious.core.gateway import GatewayHandler, open_websocket
 from curious.core.httpclient import HTTPClient
@@ -216,7 +216,7 @@ class Client(object):
         """
         Gets the application info in the background.
         """
-        appinfo = AppInfo(self, **(await self.http.get_app_info(None)))
+        appinfo = AppInfo(**(await self.http.get_app_info(None)))
         self.application_info = appinfo
 
     async def get_gateway_url(self) -> str:
@@ -671,8 +671,9 @@ class Client(object):
             self.task_manager = tg
             self.events.task_manager = tg
 
+            # update the current bot for all sub-tasks
+            current_bot.set(self)
             await multio.asynclib.spawn(tg, self._background_get_app_info)
-
             for shard_id in range(0, shard_count):
                 await multio.asynclib.spawn(tg, self.handle_shard, shard_id, shard_count)
 

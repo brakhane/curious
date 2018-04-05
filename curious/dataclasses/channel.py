@@ -18,7 +18,6 @@ Wrappers for Channel objects.
 
 .. currentmodule:: curious.dataclasses.channel
 """
-import collections
 import enum
 import pathlib
 import time
@@ -28,9 +27,11 @@ from os import PathLike
 from types import MappingProxyType
 from typing import AsyncIterator
 
+import collections
 import multio
 from async_generator import asynccontextmanager
 
+from curious.core import current_bot
 from curious.dataclasses import guild as dt_guild, invite as dt_invite, member as dt_member, \
     message as dt_message, permissions as dt_permissions, role as dt_role, user as dt_user, \
     webhook as dt_webhook
@@ -144,17 +145,16 @@ class HistoryIterator(collections.AsyncIterator):
         if to_get <= 0:
             return
 
+        bot = current_bot.get()
         if self.before:
-            messages = await self.channel._bot.http.get_message_history(self.channel.id,
-                                                                        before=self.last_message_id,
-                                                                        limit=to_get)
+            messages = bot.http.get_message_history(self.channel.id, before=self.last_message_id,
+                                                    limit=to_get)
         else:
-            messages = await self.channel._bot.http.get_message_history(self.channel.id,
-                                                                        after=self.last_message_id)
+            messages =  bot.http.get_message_history(self.channel.id, after=self.last_message_id)
             messages = reversed(messages)
 
         for message in messages:
-            self.messages.append(self.channel._bot.state.make_message(message))
+            self.messages.append(bot.state.make_message(message))
 
     async def __anext__(self) -> 'dt_message.Message':
         self.current_count += 1
@@ -288,9 +288,9 @@ class ChannelMessageWrapper(object):
         if embed is not None:
             embed = embed.to_dict()
 
-        data = await self.channel._bot.http.send_message(self.channel.id, content,
-                                                         tts=tts, embed=embed)
-        obb = self.channel._bot.state.make_message(data, cache=True)
+        bot = current_bot.get()
+        data = await bot.http.send_message(self.channel.id, content, tts=tts, embed=embed)
+        obb = bot.state.make_message(data, cache=True)
 
         return obb
 
@@ -354,9 +354,10 @@ class ChannelMessageWrapper(object):
         if filename is None:
             filename = "unknown.bin"
 
-        data = await self.channel._bot.http.send_file(self.channel.id, file_content,
-                                                      filename=filename, content=message_content)
-        obb = self.channel._bot.state.make_message(data, cache=False)
+        bot = current_bot.get()
+        data = await bot.http.send_file(self.channel.id, file_content, filename=filename,
+                                        content=message_content)
+        obb = bot.state.make_message(data, cache=False)
         return obb
 
     async def bulk_delete(self, messages: '_typing.List[dt_message.Message]') -> int:
@@ -393,7 +394,7 @@ class ChannelMessageWrapper(object):
 
             ids.append(message.id)
 
-        await self.channel._bot.http.delete_multiple_messages(self.channel.id, ids)
+        await current_bot.get().http.delete_multiple_messages(self.channel.id, ids)
 
         return len(ids)
 
@@ -472,7 +473,7 @@ class ChannelMessageWrapper(object):
             # First, try and bulk delete all the messages.
             if can_bulk_delete:
                 try:
-                    await self.channel._bot.http.delete_multiple_messages(self.channel.id,
+                    await current_bot.get().http.delete_multiple_messages(self.channel.id,
                                                                           message_ids)
                 except Forbidden:
                     # We might not have MANAGE_MESSAGES.
@@ -506,12 +507,13 @@ class ChannelMessageWrapper(object):
             if not self.channel.permissions(self.channel.guild.me).read_message_history:
                 raise PermissionsError("read_message_history")
 
-        cached_message = self.channel._bot.state.find_message(message_id)
+        bot = current_bot.get()
+        cached_message = bot.state.find_message(message_id)
         if cached_message is not None:
             return cached_message
 
         try:
-            data = await self.channel._bot.http.get_message(self.channel.id, message_id)
+            data = await bot.http.get_message(self.channel.id, message_id)
         except HTTPException as e:
             # transform into a CuriousError if it wasn't found
             if e.error_code == ErrorCode.UNKNOWN_MESSAGE:
@@ -519,7 +521,7 @@ class ChannelMessageWrapper(object):
 
             raise
 
-        msg = self.channel._bot.state.make_message(data)
+        msg = bot.state.make_message(data)
 
         return msg
 
@@ -529,8 +531,8 @@ class Channel(Dataclass):
     Represents a channel object.
     """
 
-    def __init__(self, client, **kwargs) -> None:
-        super().__init__(kwargs.get("id"), client)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(kwargs.get("id"))
 
         #: The name of this channel.
         self.name = kwargs.get("name", None)  # type: str
@@ -562,12 +564,12 @@ class Channel(Dataclass):
 
         if self.private:
             for recipient in kwargs.get("recipients", []):
-                u = self._bot.state.make_user(recipient)
+                u = current_bot.get().state.make_user(recipient)
                 self._recipients[u.id] = u
 
             if self.type == ChannelType.GROUP:
                 # append the current user
-                self._recipients[self._bot.user.id] = self._bot.user
+                self._recipients[current_bot.get().user.id] = current_bot.get().user
 
         #: The position of this channel.
         self.position = kwargs.get("position", 0)  # type: int
@@ -629,7 +631,7 @@ class Channel(Dataclass):
         :return: The :class:`.Guild` associated with this Channel.
         """
         try:
-            return self._bot.guilds[self.guild_id]
+            return current_bot.get().guilds[self.guild_id]
         except KeyError:
             return None
 
@@ -669,7 +671,7 @@ class Channel(Dataclass):
             return None
 
         try:
-            return self._bot.state._users[self.owner_id]
+            return current_bot.get().state._users[self.owner_id]
         except KeyError:
             return None
 
@@ -789,7 +791,6 @@ class Channel(Dataclass):
         obb.owner_id = self.owner_id
         obb.topic = self.topic
         obb.position = self.position
-        obb._bot = self._bot
         obb.parent_id = self.parent_id
         return obb
 
@@ -820,11 +821,11 @@ class Channel(Dataclass):
 
         :return: A list of :class:`.Message` objects.
         """
-        msg_data = await self._bot.http.get_pins(self.id)
+        msg_data = await current_bot.get().http.get_pins(self.id)
 
         messages = []
         for message in msg_data:
-            messages.append(self._bot.state.make_message(message))
+            messages.append(current_bot.get().state.make_message(message))
 
         return messages
 
@@ -842,11 +843,11 @@ class Channel(Dataclass):
 
         :return: A list of :class:`.Webhook` objects for the channel.
         """
-        webhooks = await self._bot.http.get_webhooks_for_channel(self.id)
+        webhooks = await current_bot.get().http.get_webhooks_for_channel(self.id)
         obbs = []
 
         for webhook in webhooks:
-            obbs.append(self._bot.state.make_webhook(webhook))
+            obbs.append(current_bot.get().state.make_webhook(webhook))
 
         return obbs
 
@@ -875,8 +876,8 @@ class Channel(Dataclass):
         if avatar is not None:
             avatar = base64ify(avatar)
 
-        data = await self._bot.http.create_webhook(self.id, name=name, avatar=avatar)
-        webook = self._bot.state.make_webhook(data)
+        data = await current_bot.get().http.create_webhook(self.id, name=name, avatar=avatar)
+        webook = current_bot.get().state.make_webhook(data)
 
         return webook
 
@@ -895,13 +896,13 @@ class Channel(Dataclass):
 
         if webhook.token is not None:
             # Edit it unconditionally.
-            await self._bot.http.edit_webhook_with_token(webhook.id, webhook.token,
+            await current_bot.get().http.edit_webhook_with_token(webhook.id, webhook.token,
                                                          name=name, avatar=avatar)
 
         if not self.permissions(self.guild.me).manage_webhooks:
             raise PermissionsError("manage_webhooks")
 
-        data = await self._bot.http.edit_webhook(webhook.id,
+        data = await current_bot.get().http.edit_webhook(webhook.id,
                                                  name=name, avatar=avatar)
         webhook.default_name = data.get("name")
         webhook._default_avatar = data.get("avatar")
@@ -921,13 +922,13 @@ class Channel(Dataclass):
         """
         if webhook.token is not None:
             # Delete it unconditionally.
-            await self._bot.http.delete_webhook_with_token(webhook.id, webhook.token)
+            await current_bot.get().http.delete_webhook_with_token(webhook.id, webhook.token)
             return webhook
 
         if not self.permissions(self.guild.me).manage_webhooks:
             raise PermissionsError("manage_webhooks")
 
-        await self._bot.http.delete_webhook(webhook.id)
+        await current_bot.get().http.delete_webhook(webhook.id)
         return webhook
 
     async def create_invite(self, **kwargs) -> 'dt_invite.Invite':
@@ -945,8 +946,8 @@ class Channel(Dataclass):
         if not self.permissions(self.guild.me).create_instant_invite:
             raise PermissionsError("create_instant_invite")
 
-        inv = await self._bot.http.create_invite(self.id, **kwargs)
-        invite = dt_invite.Invite(self._bot, **inv)
+        inv = await current_bot.get().http.create_invite(self.id, **kwargs)
+        invite = dt_invite.Invite(current_bot.get(), **inv)
 
         return invite
 
@@ -1025,7 +1026,7 @@ class Channel(Dataclass):
             if not self.permissions(self.guild.me).send_messages:
                 raise PermissionsError("send_message")
 
-        await self._bot.http.send_typing(self.id)
+        await current_bot.get().http.send_typing(self.id)
 
     @property
     @asynccontextmanager
@@ -1150,7 +1151,7 @@ class Channel(Dataclass):
 
         if overwrite is None:
             # Delete the overwrite instead.
-            coro = self._bot.http.remove_overwrite(channel_id=self.id, target_id=target.id)
+            coro = current_bot.get().http.remove_overwrite(channel_id=self.id, target_id=target.id)
 
             async def _listener(before, after):
                 if after.id != self.id:
@@ -1159,14 +1160,14 @@ class Channel(Dataclass):
                 # probably right /shrug
                 return True
         else:
-            coro = self._bot.http.edit_overwrite(self.id, target.id, type_,
+            coro = current_bot.get().http.edit_overwrite(self.id, target.id, type_,
                                                  allow=overwrite.allow.bitfield,
                                                  deny=overwrite.deny.bitfield)
 
             async def _listener(before, after):
                 return after.id == self.id
 
-        async with self._bot.events.wait_for_manager("channel_update", _listener):
+        async with current_bot.get().events.wait_for_manager("channel_update", _listener):
             await coro
 
         return self
@@ -1190,7 +1191,7 @@ class Channel(Dataclass):
         if "parent" in kwargs:
             kwargs["parent_id"] = kwargs["parent"].id
 
-        await self._bot.http.edit_channel(self.id, **kwargs)
+        await current_bot.get().http.edit_channel(self.id, **kwargs)
         return self
 
     async def delete(self) -> 'Channel':
@@ -1200,7 +1201,7 @@ class Channel(Dataclass):
         if not self.permissions(self.guild.me).manage_channels:
             raise PermissionsError("manaqe_channels")
 
-        await self._bot.http.delete_channel(self.id)
+        await current_bot.get().http.delete_channel(self.id)
         return self
 
     async def connect(self):

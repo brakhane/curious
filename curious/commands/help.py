@@ -19,16 +19,22 @@ Home of the default help command.
 .. currentmodule:: curious.commands.help
 """
 import inspect
+from typing import List
 
-from curious.commands.context import Context
+from curious.commands.context import channel, command_context
 from curious.commands.exc import CommandsError
 from curious.commands.utils import get_full_name, get_usage
 
 
-async def _get_command_list(ctx: Context, command, *, include_root: bool = True):
+async def get_command_list(command, *, include_root: bool = True) -> List[str]:
     """
     Recursively produces a command list for the command, using subcommands.
+
+    :param command: The command function to use.
+    :param include_root: If the root command should be included in the list.
+    :return: A list of command names.
     """
+    ctx = command_context.get()
     try:
         if not (await ctx.can_run(command))[0]:
             return []
@@ -59,12 +65,12 @@ async def _get_command_list(ctx: Context, command, *, include_root: bool = True)
             l.append(get_full_name(subcommand))
         else:
             l.append(subcommand.cmd_name)
-        l.extend(await _get_command_list(ctx, subcommand))
+        l.extend(await get_command_list(subcommand))
 
     return l
 
 
-async def help_for_all(ctx: Context):
+async def help_for_all():
     """
     Gets the content of help for all.
     """
@@ -73,6 +79,7 @@ async def help_for_all(ctx: Context):
     # row_num is the current number to put on a row
     # this isn't incremented if we skip a row
     row_num = 0
+    ctx = command_context.get()
 
     for plugin in ctx.manager.plugins.values():
         commands = plugin._get_commands()
@@ -88,7 +95,7 @@ async def help_for_all(ctx: Context):
             if command.cmd_subcommand:
                 continue
 
-            names = await _get_command_list(ctx, command)
+            names = await get_command_list(command)
             command_names.extend(names)
 
         if not command_names:
@@ -109,7 +116,7 @@ async def help_for_all(ctx: Context):
             if command.cmd_subcommand:
                 continue
 
-            names = await _get_command_list(ctx, command)
+            names = await get_command_list(command)
             command_names.extend(names)
 
         if command_names:
@@ -127,10 +134,11 @@ async def help_for_all(ctx: Context):
     return f"{preamble}{rows_joined}"
 
 
-async def help_for_one(ctx: Context, command):
+async def help_for_one(command):
     """
     Gets the content of help for one command.
     """
+    ctx = command_context.get()
     # get the command from the manager
     cfunc = ctx.manager.get_command(command)
     if cfunc is None:
@@ -138,7 +146,7 @@ async def help_for_one(ctx: Context, command):
 
     usage = get_usage(cfunc, invoked_as=command)
 
-    subcommands = await _get_command_list(ctx, cfunc, include_root=False)
+    subcommands = await get_command_list(cfunc, include_root=False)
     subcommands_fmtted = " | ".join(f"`{x}`" for x in subcommands)
 
     description = inspect.getdoc(cfunc)
@@ -151,16 +159,16 @@ async def help_for_one(ctx: Context, command):
         return f"`{usage}`\n\n{description}"
 
 
-async def help_command(ctx: Context, *, command: str = None):
+async def help_command(*, command: str = None):
     """
     The default help command.
     """
     if command is None:
         # Let the ruling classes tremble at a Communistic revolution.
         # The proletarians have nothing to lose but their chains. They have a world to win.
-        content = await help_for_all(ctx)
+        content = await help_for_all()
     else:
         # Evidence-based policy
-        content = await help_for_one(ctx, command)
+        content = await help_for_one(command)
 
-    await ctx.channel.messages.send(content)
+    await channel.messages.send(content)

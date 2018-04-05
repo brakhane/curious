@@ -21,6 +21,7 @@ Wrappers for User objects.
 
 import datetime
 
+from curious.core import current_bot
 from curious.dataclasses import channel as dt_channel, guild as dt_guild, message as dt_message
 from curious.dataclasses.bases import Dataclass
 from curious.exc import CuriousError
@@ -102,8 +103,8 @@ class User(Dataclass):
     __slots__ = ("username", "discriminator", "avatar_hash", "verified", "mfa_enabled",
                  "bot", "_bot")
 
-    def __init__(self, client, **kwargs):
-        super().__init__(kwargs.get("id"), client)
+    def __init__(self, **kwargs):
+        super().__init__(kwargs.get("id"))
 
         #: The username of this user.
         self.username = kwargs.get("username", None)
@@ -137,8 +138,6 @@ class User(Dataclass):
         new_object.verified = self.verified
         new_object.mfa_enabled = self.mfa_enabled
         new_object.bot = self.bot
-
-        new_object._bot = self._bot
 
         return new_object
 
@@ -195,13 +194,14 @@ class User(Dataclass):
             raise CuriousError("Cannot open a private channel with a webhook")
 
         # First, try and access the channel from the channel cache.
-        original_channel = self._bot.state.find_channel(self.id)
+        bot = current_bot.get()
+        original_channel = bot.state.find_channel(self.id)
         if original_channel:
             return original_channel
 
         # Failing that, open a new private channel.
-        channel_data = await self._bot.http.create_private_channel(self.id)
-        channel = self._bot.state.make_private_channel(channel_data)
+        channel_data = await bot.http.create_private_channel(self.id)
+        channel = bot.state.make_private_channel(channel_data)
         return channel
 
     async def send(self, content: str = None, *args, **kwargs) -> 'dt_message.Message':
@@ -230,8 +230,8 @@ class BotUser(User):
     A special type of user that represents ourselves.
     """
 
-    def __init__(self, client, **kwargs):
-        super().__init__(client, **kwargs)
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
 
         #: The email for this user.
         self.email = kwargs.get("email", None)
@@ -252,10 +252,10 @@ class BotUser(User):
         """
         Edits the bot's current profile.
         """
-        return await self._bot.edit_profile(*args, **kwargs)
+        return await current_bot.get().edit_profile(*args, **kwargs)
 
     async def upload_avatar(self, path: str):
         """
         A higher level interface to editing the bot's avatar.
         """
-        return await self._bot.edit_avatar(path)
+        return await current_bot.get().edit_avatar(path)

@@ -32,6 +32,7 @@ if the data for each  is not cached by curious. Otherwise, full :class:`.Guild` 
 import typing
 
 from curious import util
+from curious.core import current_bot
 from curious.dataclasses import channel as dt_channel, guild as dt_guild, member as dt_member, \
     user as dt_user
 from curious.dataclasses.bases import IDObject
@@ -144,8 +145,6 @@ class Invite(object):
     """
 
     def __init__(self, client, **kwargs):
-        self._bot = client
-
         #: The invite code.
         self.code = kwargs.get("code")  # type: str
 
@@ -185,7 +184,7 @@ class Invite(object):
 
     def __del__(self) -> None:
         if self.inviter:
-            self._bot.state._check_decache_user(self.inviter_id)
+            current_bot.get().state._check_decache_user(self.inviter_id)
 
     @property
     def inviter(self) -> 'typing.Union[dt_member.Member, dt_user.User]':
@@ -193,11 +192,11 @@ class Invite(object):
         :return: The :class:`.Member` or :class:`.User` that made this invite.
         """
         if isinstance(self._invite_guild, InviteGuild):
-            return self._bot.state.make_user(self._inviter_data)
+            return current_bot.get().state.make_user(self._inviter_data)
 
         u = self._invite_guild.members.get(self.inviter_id)
         if not u:
-            return self._bot.state.make_user(self._inviter_data)
+            return current_bot.get().state.make_user(self._inviter_data)
 
         return u
 
@@ -206,7 +205,7 @@ class Invite(object):
         """
         :return: The guild this invite is associated with.
         """
-        return self._bot.state.guilds.get(self.guild_id, self._invite_guild)
+        return current_bot.get().state.guilds.get(self.guild_id, self._invite_guild)
 
     @property
     def channel(self) -> 'typing.Union[dt_channel.Channel, InviteChannel]':
@@ -219,7 +218,7 @@ class Invite(object):
 
         return g.channels.get(self.channel_id, self._invite_channel)
 
-    async def delete(self):
+    async def delete(self) -> None:
         """
         Deletes this invite.
 
@@ -230,4 +229,4 @@ class Invite(object):
             if not guild.me.guild_permissions.manage_channels:
                 raise PermissionsError("manage_channels")
 
-        await self._bot.http.delete_invite(self.code)
+        await current_bot.get().http.delete_invite(self.code)

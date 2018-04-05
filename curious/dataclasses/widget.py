@@ -21,6 +21,7 @@ Wrappers for Widget objects.
 import typing
 from types import MappingProxyType
 
+from curious.core import current_bot
 from curious.dataclasses import channel as dt_channel, guild as dt_guild
 from curious.dataclasses.bases import Dataclass
 from curious.dataclasses.presence import Game, Status
@@ -31,8 +32,8 @@ class WidgetChannel(Dataclass):
     Represents a limited subsection of a channel.
     """
 
-    def __init__(self, bot, guild: 'WidgetGuild', **kwargs):
-        super().__init__(id=int(kwargs.get("id", 0)), cl=bot)
+    def __init__(self, guild: 'WidgetGuild', **kwargs):
+        super().__init__(id=int(kwargs.get("id", 0)))
 
         #: The name of this channel.
         self.name = kwargs.get("name")
@@ -52,8 +53,8 @@ class WidgetMember(Dataclass):
     Represents a limited subsection of a member.
     """
 
-    def __init__(self, bot, guild: 'WidgetGuild', kwargs):
-        super().__init__(id=int(kwargs.get("id", 0)), cl=bot)
+    def __init__(self, guild: 'WidgetGuild', kwargs):
+        super().__init__(id=int(kwargs.get("id", 0)))
 
         # construct a superficial user dict
         user_dict = {
@@ -64,6 +65,7 @@ class WidgetMember(Dataclass):
             "bot": kwargs.get("bot", False)
         }
         #: The :class:`.User` object associated with this member.
+        bot = current_bot.get()
         self.user = bot.state.make_user(user_dict)
         bot.state._check_decache_user(user_dict["id"])
 
@@ -85,8 +87,8 @@ class WidgetGuild(Dataclass):
     Represents a limited subsection of a guild.
     """
 
-    def __init__(self, bot, **kwargs):
-        super().__init__(id=int(kwargs.get("id", 0)), cl=bot)
+    def __init__(self, **kwargs) -> None:
+        super().__init__(id=int(kwargs.get("id", 0)))
 
         #: The name of this guild.
         self.name = kwargs.get("name", "")
@@ -94,13 +96,13 @@ class WidgetGuild(Dataclass):
         #: A mapping of :class:`.WidgetChannel` in this widget guild.
         self._channels = {}  # type: typing.MutableMapping[int, WidgetChannel]
         for channel in kwargs.get("channels", []):
-            c = WidgetChannel(bot=self._bot, guild=self, **channel)
+            c = WidgetChannel(guild=self, **channel)
             self._channels[c.id] = c
 
         #: A mapping of :class:`.WidgetMember` in this widget guild.
         self._members = {}
         for member in kwargs.get("members", []):
-            m = WidgetMember(bot=self._bot, guild=self, kwargs=member)
+            m = WidgetMember(guild=self, kwargs=member)
             self._members[m.id] = m
 
     @property
@@ -119,7 +121,7 @@ class WidgetGuild(Dataclass):
         """
         return MappingProxyType(self._members)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<WidgetGuild id={} members={} name='{}'>".format(self.id, len(self.members),
                                                                  self.name)
 
@@ -131,14 +133,12 @@ class Widget(object):
     Represents the embed widget for a guild.
     """
 
-    def __init__(self, client, **kwargs):
-        self._bot = client
-
+    def __init__(self, **kwargs) -> None:
         #: The guild ID for this widget.
         self.guild_id = int(kwargs.get("id", 0))
 
         #: The widget guild for this widget.
-        self._widget_guild = WidgetGuild(self._bot, **kwargs)
+        self._widget_guild = WidgetGuild(**kwargs)
 
         #: The invite URL that this widget represents.
         self.invite_url = kwargs.get("instant_invite", None)
@@ -150,7 +150,7 @@ class Widget(object):
             If the guild was cached, a :class:`.Guild`. Otherwise, a :class:`.WidgetGuild`.
         """
         try:
-            return self._bot.guilds[self.guild_id]
+            return current_bot.get().guilds[self.guild_id]
         except KeyError:
             return self._widget_guild
 
@@ -161,5 +161,5 @@ class Widget(object):
         """
         return self.guild.channels
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<Widget guild={}>".format(self.guild)
