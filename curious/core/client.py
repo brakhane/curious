@@ -707,13 +707,3 @@ class Client(object):
 
         p = functools.partial(self.run_async, shard_count=shard_count, autoshard=autoshard)
         multio.run(p, **kwargs)
-
-    @classmethod
-    def from_token(cls, token: str = None):
-        """
-        Starts a bot from a token object.
-
-        :param token: The token to use for the bot.
-        """
-        bot = cls(token)
-        return bot.run()
