@@ -380,7 +380,7 @@ class CommandsManager(object):
         await ctx.try_invoke()
 
     @event("command_error")
-    async def default_command_error(self, ctx: Context, err: CommandsError):
+    async def default_command_error(self, err: CommandsError):
         """
         Handles command errors by default.
         """
