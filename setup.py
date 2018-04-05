@@ -1,28 +1,19 @@
-import sys
 from pathlib import Path
 
 from setuptools import setup
 
 install_requires = [
-        "lomond>=0.1.13,<0.2",
-        "pylru==1.0.9",
-        "oauthlib>=2.0.2,<2.1.0",
-        "pytz>=2017.3",
-        "asks>=1.3.0,<1.4.0",
-        "multidict>=4.1.0,<4.2.0",
-        "multio>=0.2.1,<0.3.0",
-        "async_generator~=1.9",  # asynccontextmanager for 3.6
-        "typing_inspect>=0.2.0"
+    "lomond>=0.1.13,<0.2",
+    "pylru==1.0.9",
+    "oauthlib>=2.0.2,<2.1.0",
+    "pytz>=2017.3",
+    "asks>=1.3.0,<1.4.0",
+    "multidict>=4.1.0,<4.2.0",
+    "multio>=0.2.1,<0.3.0",
+    "async_generator~=1.9",  # asynccontextmanager for 3.6
+    "typing_inspect>=0.2.0",
+
 ]
-
-py36_requires = [
-    "dataclasses>=0.3",  # PEP 557
-    "contextvars>=2.0"  # PEP 567
-]
-
-if sys.version_info[0:2] <= (3, 6):
-    install_requires += py36_requires
-
 
 setup(
     name='discord-curious',
@@ -56,7 +47,11 @@ setup(
         "boot": {
             "click",
             "ruamel.yaml"
-        }
+        },
+        ":python_version < '3.7'": [
+            "dataclasses>=0.3",
+            "contextvars>=2.0"
+        ]
     },
     entry_points={
         "console_scripts": ['curious=curious.boot._entry_point:basculin']
