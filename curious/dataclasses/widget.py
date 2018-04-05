@@ -24,7 +24,7 @@ from types import MappingProxyType
 from curious.core import current_bot
 from curious.dataclasses import channel as dt_channel, guild as dt_guild
 from curious.dataclasses.bases import Dataclass
-from curious.dataclasses.presence import Game, Status
+from curious.dataclasses.presence import Game, Presence, Status
 
 
 class WidgetChannel(Dataclass):
@@ -72,14 +72,14 @@ class WidgetMember(Dataclass):
         #: The :class:`.WidgetGuild` object associated with this member.
         self.guild = guild
 
-        #: The game associated with this member.
         game = kwargs.get("game")
         if game is None:
             game = {}
-        self.game = Game(**game) if game else None
+        game = Game(**game) if game else None
+        status = Status(kwargs.get("status"))
 
-        #: The :class:`.Status` associated with this member.
-        self.status = Status(kwargs.get("status"))
+        #: The :class:`.Presence` for this member.
+        self.presence = Presence(status=status, game=game)
 
 
 class WidgetGuild(Dataclass):

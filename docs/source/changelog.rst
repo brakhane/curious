@@ -26,6 +26,9 @@ This document displays the differences between each release of curious.
 
  - Add a plugin -> command cache, that is baked during :meth:`.Plugin._get_commands`.
 
+ - Remove :attr:`.WidgetMember.game` and :attr:`.WidgetMember.status`, and turn them into
+   :attr:`.WidgetMember.presence`.
+
 0.7.7 (Released 2018-04-04)
 ---------------------------
 
