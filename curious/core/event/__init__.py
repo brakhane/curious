@@ -30,7 +30,7 @@ import typing
 
 from curious.core.event.context import EventContext, event_context
 from curious.core.event.decorator import event
-from curious.core.event.manager import EventManager
+from curious.core.event.manager import EventManager, ListenerExit
 
 __all__ = [
     "EventContext", "event_context",

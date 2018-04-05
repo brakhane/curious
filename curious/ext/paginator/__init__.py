@@ -20,6 +20,7 @@ import typing
 
 import multio
 
+from curious.core import current_bot
 from curious.core.event import ListenerExit
 from curious.dataclasses.channel import Channel
 from curious.dataclasses.embed import Embed
@@ -48,19 +49,17 @@ class ReactionsPaginator(object):
         :param break_at: The number of characters to break the message up into.
         :param title: The title to put above the embed.
         """
-        self._content = content
+        self.content = content
         self.channel = channel
         self.respond_to = respond_to
         self.title = title
-
-        self.bot = self.channel._bot  # hacky af
 
         # chunk the message up
         if isinstance(content, list):
             self._message_chunks = content
         else:
-            self._message_chunks = [self._content[i:i + break_at] for i in
-                                    range(0, len(self._content), break_at)]
+            self._message_chunks = [self.content[i:i + break_at] for i in
+                                    range(0, len(self.content), break_at)]
 
         #: The current page this paginator is on.
         self.page = 0
@@ -138,7 +137,8 @@ class ReactionsPaginator(object):
                 raise ListenerExit
 
         # spawn the consumer task first
-        self.bot.events.add_temporary_listener("message_reaction_add", consume_reaction)
+        bot = current_bot.get()
+        bot.events.add_temporary_listener("message_reaction_add", consume_reaction)
 
         # send the stuff we want
         await self.send_current_page()
@@ -176,4 +176,4 @@ class ReactionsPaginator(object):
         self._running = False
         # we've broken out of the loop, so remove reactions and cancel the listener
         await self._message.remove_all_reactions()
-        self.bot.events.remove_listener_early("message_reaction_add", consume_reaction)
+        bot.events.remove_listener_early("message_reaction_add", consume_reaction)
