@@ -24,7 +24,6 @@ import typing
 import multio
 from async_generator import asynccontextmanager
 from multidict.__init__ import MultiDict
-from trio._core import current_task
 
 from curious.core.event.context import EventContext, _global_context
 from curious.util import remove_from_multidict, safe_generator
@@ -268,7 +267,6 @@ class EventManager(object):
         ctx.event_name = event_name
         # update event context first
         token = _global_context.set(ctx)
-        task = current_task()
 
         # always ensure hooks are ran first
         for hook in self.event_hooks:
