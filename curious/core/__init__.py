@@ -30,4 +30,7 @@ delegating it to client code.
     httpclient
     state
 """
+from contextvars import ContextVar
 
+#: The context variable representing the current bot being ran.
+current_bot = ContextVar("current_bot")
