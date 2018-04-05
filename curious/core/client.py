@@ -477,7 +477,7 @@ class Client(object):
         :return: The :class:`.Member` object downloaded.
         """
         member_data = await self.http.get_guild_member(guild_id=guild_id, member_id=member_id)
-        member = dt_member.Member(self, **member_data)
+        member = dt_member.Member(**member_data)
         # this is enough to pick up the cache
         member.guild_id = guild_id
 
@@ -526,7 +526,7 @@ class Client(object):
         # create the member objects
         members = []
         for datum in member_data:
-            m = dt_member.Member(self, **datum)
+            m = dt_member.Member(**datum)
             m.guild_id = guild_id
             members.append(m)
 
@@ -542,7 +542,7 @@ class Client(object):
         channel_data = await self.http.get_guild_channels(guild_id=guild_id)
         channels = []
         for datum in channel_data:
-            channel = dt_channel.Channel(self, **datum)
+            channel = dt_channel.Channel(**datum)
             channel.guild_id = guild_id
             channels.append(channel)
 
@@ -564,7 +564,7 @@ class Client(object):
         """
         guild_data = await self.http.get_guild(guild_id)
         # create the new guild using the data specified
-        guild = dt_guild.Guild(self, **guild_data)
+        guild = dt_guild.Guild(**guild_data)
         guild.unavailable = False
 
         # update the guild store
