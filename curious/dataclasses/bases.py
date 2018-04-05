@@ -49,7 +49,7 @@ class IDObject(object):
     It is also hashable, using the ID as a hash.
     """
 
-    __slots__ = "id",
+    __slots__ = "id", "__weakref__",
 
     def __init__(self, id: int):
         """
