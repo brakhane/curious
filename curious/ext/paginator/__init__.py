@@ -119,6 +119,10 @@ class ReactionsPaginator(object):
         This will continuously listen for reactions on this message until the STOP button is
         pressed.
         """
+        if len(self._message_chunks) == 1:
+            await self.send_current_page()
+            return
+
         self._running = True
 
         async def consume_reaction(ctx, message: Message, author: Member, reaction: Reaction):
