@@ -89,9 +89,7 @@ class Dataclass(IDObject):
 
     These contain a reference to the current bot as `_bot`.
     """
-
-    # __weakref__ is used to allow weakreffing
-    __slots__ = "__weakref__",
+    __slots__ = ()
 
     @staticmethod
     def __new__(cls, *args, **kwargs):
