@@ -22,6 +22,7 @@ setup(
         "local_scheme": "dirty-tag"
     },
     packages=['curious', 'curious.core', 'curious.core._ws_wrapper',
+              'curious.core.event',
               'curious.commands', 'curious.dataclasses',
               'curious.ext.paginator', 'curious.ipc',
               'curious.internal', 'curious.boot'],
