@@ -118,6 +118,7 @@ class Chunker(object):
         gateway = self.client._gateways[shard_id]
         await self.client.events.fire_event("ready", gateway=gateway, client=self.client)
         self._ready[shard_id] = True
+        self.client.state._shards_is_ready[shard_id] = True
 
     @event("guild_chunk")
     async def handle_member_chunk(self, guild: 'md_guild.Guild', members: int):

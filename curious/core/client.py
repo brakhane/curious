@@ -212,7 +212,7 @@ class Client(object):
         """
         return self.state.find_channel(channel_id)
 
-    async def _background_get_app_info(self):
+    async def _background_get_app_info(self) -> None:
         """
         Gets the application info in the background.
         """
@@ -278,11 +278,6 @@ class Client(object):
 
         This actually passes the arguments to :meth:`.EventManager.fire_event`.
         """
-        gateway = kwargs.get("gateway")
-        if not self.state.is_ready(gateway.gw_state.shard_id):
-            if event_name not in self.IGNORE_READY and not event_name.startswith("gateway_"):
-                return
-
         return await self.events.fire_event(event_name, *args, **kwargs, client=self)
 
     async def wait_for(self, *args, **kwargs) -> typing.Any:
@@ -597,7 +592,7 @@ class Client(object):
             logger.debug(f"Processing event {name}")
 
         try:
-            result = handler(event_context.gateway, dispatch)
+            result = handler(dispatch)
 
             if inspect.isawaitable(result):
                 result = await result
@@ -650,6 +645,13 @@ class Client(object):
             try:
                 async with multio.asynclib.finalize_agen(gw.events()) as agen:
                     async for event in agen:
+                        # ("gateway_invalidate_session", should_resume)
+                        if event[0] == "gateway_invalidate_session":
+                            if not event[1]:
+                                # ensure our chunking state is reset so we get the right
+                                # join/stream events
+                                self.state._reset(shard_id)
+
                         await self.fire_event(event[0], *event[1:], gateway=gw)
             except Exception as e:  # kill the bot if we failed to parse something
                 await self.kill()
