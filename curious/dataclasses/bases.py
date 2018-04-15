@@ -86,8 +86,6 @@ class IDObject(object):
 class Dataclass(IDObject):
     """
     The base class for all dataclasses.
-
-    These contain a reference to the current bot as `_bot`.
     """
     __slots__ = ()
 
