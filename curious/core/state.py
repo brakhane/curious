@@ -56,55 +56,6 @@ def int_or_none(val, default: typing.Any) -> typing.Union[int, None]:
     return int(val)
 
 
-class GuildStore(collections.MutableMapping):
-    """
-    A store for guilds in the state.
-    """
-
-    def __init__(self):
-        #: The internal actual guilds.
-        self.guilds = {}
-
-        #: The order of the guilds, as specified by the READY packet.
-        self.order = []
-
-    def view(self) -> typing.Mapping[int, Guild]:
-        """
-        :return: A :class:`mappingproxy` of the internal guilds. 
-        """
-        return MappingProxyType(self.guilds)
-
-    @property
-    def with_order(self) -> 'typing.Mapping[int, Guild]':
-        """
-        :return: A mapping of the guilds with the order specified in the ready packet.
-        """
-        if not self.order:
-            return self.view()
-
-        o = collections.OrderedDict()
-        for guild in map(int, self.order):
-            o[guild] = self.guilds[guild]
-
-        return MappingProxyType(o)
-
-    # abc methods
-    def __setitem__(self, key, value) -> None:
-        return self.guilds.__setitem__(key, value)
-
-    def __getitem__(self, key) -> Guild:
-        return self.guilds.__getitem__(key)
-
-    def __delitem__(self, key) -> None:
-        return self.guilds.__delitem__(key)
-
-    def __iter__(self) -> typing.Iterator[Guild]:
-        return self.guilds.__iter__()
-
-    def __len__(self) -> int:
-        return self.guilds.__len__()
-
-
 class State(object):
     """
     This represents the state of the Client - in other libraries, the cache.
@@ -121,7 +72,7 @@ class State(object):
         self._private_channels = {}
 
         #: The guilds the bot can see.
-        self._guilds = GuildStore()
+        self._guilds = {}
 
         #: The current user cache.
         self._users = {}
@@ -158,14 +109,7 @@ class State(object):
         """
         :return: A mapping of int -> :class:`.Guild`.
         """
-        return self._guilds.view()
-
-    @property
-    def guilds_ordered(self) -> typing.Mapping[int, Guild]:
-        """
-        :return: An ordered mapping of int -> :class:`.Guild` by the user's guild ordering.
-        """
-        return self._guilds.with_order
+        return MappingProxyType(self._guilds)
 
     def have_all_chunks(self, shard_id: int):
         """
