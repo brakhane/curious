@@ -19,12 +19,12 @@ Defines :class:`.State`.
 .. currentmodule:: curious.core.state
 """
 
+import collections
 import copy
 import logging
 import typing
 from types import MappingProxyType
 
-import collections
 import multio
 
 from curious.core import gateway
@@ -112,13 +112,10 @@ class State(object):
     The other main purpose for this class is to parse events from the Discord websocket.
     """
 
-    def __init__(self, client, max_messages: int = 500):
+    def __init__(self, max_messages: int = 500):
         #: The current user of this bot.
         #: This is automatically set after login.
         self._user = None  # type: BotUser
-
-        #: The client associated with this connection.
-        self.client = client
 
         #: The private channel cache.
         self._private_channels = {}

@@ -21,6 +21,7 @@ This contains a definition for :class:`.Client` which is used to interface prima
 .. currentmodule:: curious.core.client
 """
 
+import collections
 import enum
 import functools
 import inspect
@@ -28,7 +29,6 @@ import logging
 import typing
 from types import MappingProxyType
 
-import collections
 import multio
 
 from curious.core import chunker as md_chunker, current_bot
@@ -123,7 +123,7 @@ class Client(object):
             state_klass = State
 
         #: The current connection state for the bot.
-        self.state = state_klass(self)
+        self.state = state_klass()
 
         #: The bot type for this bot.
         self.bot_type = bot_type
