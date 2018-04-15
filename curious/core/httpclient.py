@@ -335,9 +335,15 @@ class HTTPClient(object):
 
         lock = self.get_ratelimit_lock(bucket)
         # If we're being globally ratelimited, this will block until the global lock is finished.
-        await self.global_lock.acquire()
+        try:
+            await self.global_lock.acquire()
         # Immediately release it because we're no longer being globally ratelimited.
-        await self.global_lock.release()
+        finally:
+            try:
+                await self.global_lock.release()
+            except (AssertionError, RuntimeError):
+                pass
+
         try:
             await lock.acquire()
 
