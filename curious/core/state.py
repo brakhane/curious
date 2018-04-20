@@ -22,10 +22,9 @@ Defines :class:`.State`.
 import collections
 import copy
 import logging
+import multio
 import typing
 from types import MappingProxyType
-
-import multio
 
 from curious.core.event import event_context
 from curious.dataclasses.bases import allow_external_makes
@@ -81,19 +80,9 @@ class State(object):
         #: This is bounded to prevent the message cache from growing infinitely.
         self.messages = collections.deque(maxlen=max_messages)
 
-        self._shards_is_ready = collections.defaultdict(lambda: False)
         self.__voice_state_crap = collections.defaultdict(
             lambda *args, **kwargs: ((multio.Event(), multio.Event()), {})
         )
-
-    def _reset(self, shard_id: int):
-        """
-        Called after session is invalidated, to reset our state.
-        """
-        self._shards_is_ready.pop(shard_id, None)
-
-        for guild in self.guilds_for_shard(shard_id):
-            guild._finished_chunking.clear()
 
     @property
     def guilds(self) -> typing.Mapping[int, Guild]:
@@ -101,19 +90,6 @@ class State(object):
         :return: A mapping of int -> :class:`.Guild`.
         """
         return MappingProxyType(self._guilds)
-
-    def have_all_chunks(self, shard_id: int):
-        """
-        Checks if we have all the chunks for the specified shard.
-
-        :param shard_id: The shard ID to check.
-        """
-        if any(guild.unavailable is True for guild in self.guilds.values()):
-            return False
-
-        return all(guild._finished_chunking.is_set()
-                   for guild in self.guilds.values()
-                   if guild.shard_id == shard_id and guild.unavailable is False)
 
     def guilds_for_shard(self, shard_id: int):
         """
@@ -389,7 +365,6 @@ class State(object):
         # correctly set
         # so we simply look it up from there
         # ideally, we wouldn't do this, but oh well.
-        shard_id = event_context.shard_id
         logger.info("We have been issued a session, parsing ready for `{}#{}` ({})"
                     .format(self._user.username, self._user.discriminator, self._user.id))
 
@@ -398,10 +373,8 @@ class State(object):
             new_guild = Guild(**guild)
             self._guilds[new_guild.id] = new_guild
             new_guild.from_guild_create(**guild)
-            new_guild.shard_id = shard_id
 
-        logger.info("Ready processed for shard {}. Delaying until all guilds are chunked."
-                    .format(shard_id))
+        logger.info("Received a ready, delaying until all guilds are chunked.")
         yield "connect",
 
         # event_data.pop("guilds")
@@ -535,23 +508,7 @@ class State(object):
         #    # unavailable guilds etc
         #    pass
 
-        # Dispatch the event if we're ready (i.e not streaming)
-        if self._shards_is_ready[shard_id]:
-            if had_guild:
-                yield "guild_available", guild,
-            else:
-                # We didn't have it before, so we just joined it.
-                # Hence, we fire a `guild_join` event.
-                # Parse the guild.
-                guild.from_guild_create(**event_data)
-                yield "guild_join", guild,
-
-                logger.info("Joined guild {} ({}), requesting members if applicable"
-                            .format(guild.name, guild.id))
-        else:
-            logger.debug("Streamed guild: {} ({})".format(guild.name, guild.id))
-            yield "guild_streamed", guild,
-
+        yield "guild_create", guild
         members = len(event_data.get("members", []))
         yield "guild_chunk", guild, members
 

@@ -12,14 +12,15 @@
 #
 # You should have received a copy of the GNU Lesser General Public License
 # along with curious.  If not, see <http://www.gnu.org/licenses/>.
+from collections import defaultdict
+from math import ceil
 
 import logging
-from collections import defaultdict
 from typing import List, MutableMapping
 
 from curious.core import client as md_client
 from curious.core.event import event
-from curious.core.event.context import event_context
+from curious.core.event.context import _global_context, event_context
 from curious.dataclasses import guild as md_guild
 
 logger = logging.getLogger(__name__)
@@ -49,10 +50,9 @@ class Chunker(object):
         """
         Registers the events for this chunk handler.
         """
-        event_handler.add_event(self.potentially_add_to_pending)
-        event_handler.add_event(self.handle_new_guild)
         event_handler.add_event(self.handle_member_chunk)
         event_handler.add_event(self.unconditionally_chunk_rest)
+        event_handler.add_event(self.handle_guild_create)
 
     async def fire_chunks(self, shard_id: int, guilds: 'List[md_guild.Guild]'):
         """
@@ -118,35 +118,44 @@ class Chunker(object):
         gateway = self.client._gateways[shard_id]
         await self.client.events.fire_event("ready", gateway=gateway, client=self.client)
         self._ready[shard_id] = True
-        self.client.state._shards_is_ready[shard_id] = True
 
     @event("guild_chunk")
     async def handle_member_chunk(self, guild: 'md_guild.Guild', members: int):
         """
         Checks if we can fire ready or not.
         """
-        # the state handles the finer details of the event, thankfully
         await self._potentially_fire_ready(guild.shard_id)
 
-    @event("guild_streamed")
-    async def potentially_add_to_pending(self, guild: 'md_guild.Guild'):
+    @event("guild_create")
+    async def handle_guild_create(self, guild: 'md_guild.Guild'):
         """
-        Potentially adds a guild to the pending count.
+        Handles a GUILD_CREATE.
         """
+        shard = event_context.shard_id
+        guild.shard_id = shard
+
+        ready = self._ready[shard]
+
+        # first check if we need to fire chunks
         if guild.large:
-            logger.debug("Added guild `%s` to chunk pending", guild.id)
-            self._pending[guild.shard_id].append(guild)
+            if ready:
+                logger.info("Joined guild %s, chunking immediately", guild.id)
+                await self.fire_chunks(shard, [guild])
+            else:
+                logger.info("Streamed guild %s, adding to pending chunks")
+                self._pending[shard].append(guild)
+                await self.potentially_fire_chunks(shard_id=shard)
 
-        await self.potentially_fire_chunks(shard_id=guild.shard_id)
+            guild._finished_chunking.clear()
+            guild._chunks_left = int(ceil(guild.member_count / 1000))
 
-    @event("guild_available")
-    @event("guild_joined")
-    async def handle_new_guild(self, guild: 'md_guild.Guild'):
-        """
-        Handles a new guild (just become available for) has just joined.
-        """
-        # immediately chunk
-        await self.fire_chunks(guild.shard_id, [guild])
+        # check what event we need to re-dispatch
+        if ready:
+            event = ("guild_join", guild)
+        else:
+            event = ("guild_streamed", guild)
+
+        await self.client.events.fire_event(event[0], event[1], ctx=_global_context.get())
 
     # clear any pending guilds
     @event("connect")
