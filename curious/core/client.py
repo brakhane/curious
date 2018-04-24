@@ -26,10 +26,9 @@ import enum
 import functools
 import inspect
 import logging
+import multio
 import typing
 from types import MappingProxyType
-
-import multio
 
 from curious.core import chunker as md_chunker, current_bot
 from curious.core.event import EventManager, event as ev_dec, event_context, scan_events
@@ -148,6 +147,9 @@ class Client(object):
 
         #: The task manager used for this bot.
         self.task_manager = None
+
+        #: Bot-local storage.
+        self._bot_locals = {}
 
         for (name, event) in scan_events(self):
             self.events.add_event(event)

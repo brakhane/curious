@@ -36,6 +36,12 @@ class BotVar(object):
 
     This is like a context variable, and exposes the same API - but instead of being task-local,
     it stores data on the current :class:`.Client` instance's "bot data".
+
+    .. warning::
+
+        This diverges from ContextVar behaviour slightly, in that the default is stored upon
+        first access if it did not exist previously.
+
     """
     _NO_DEFAULT = object()
 
@@ -67,6 +73,7 @@ class BotVar(object):
             return bot._bot_locals[self]
         except KeyError:
             if self._default is not self._NO_DEFAULT:
+                self.set(self._default)
                 return self._default
 
             raise LookupError(self)

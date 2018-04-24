@@ -20,10 +20,9 @@ Class for the commands context.
 """
 import inspect
 import types
+import typing_inspect
 from contextvars import ContextVar
 from typing import Any, Callable, List, Tuple, Type, Union
-
-import typing_inspect
 
 from curious.commands.converters import convert_channel, convert_float, convert_int, convert_list, \
     convert_member, convert_role, convert_union
@@ -36,6 +35,7 @@ from curious.dataclasses.member import Member
 from curious.dataclasses.message import Message
 from curious.dataclasses.role import Role
 from curious.dataclasses.user import User
+from curious.internal.botvar import BotVar
 from curious.internal.proxy import ProxyLookupVar
 
 #: The current command context.
@@ -51,6 +51,8 @@ author: Union[User, Member] = ProxyLookupVar(command_context, "author")  # type:
 #: The guild for the current command context.
 guild: Guild = ProxyLookupVar(command_context, "guild")  # type: ignore
 
+_c_typehint: 'Callable[[Any, Context, str], Any]'
+
 
 class Context(object):
     """
@@ -59,7 +61,7 @@ class Context(object):
     To get the current context, use :attr:`.command_context`, which is a
     :class:`contextvars.ContextVar` which stores the current context running.
     """
-    _converters = {
+    _global_converters = {
         Channel: convert_channel,
         Member: convert_member,
         Role: convert_role,
@@ -71,6 +73,8 @@ class Context(object):
         int: convert_int,
         float: convert_float,
     }
+
+    _local_converters = BotVar("local_converters", default=None)
 
     def __init__(self, message: Message, event_context: EventContext):
         """
@@ -102,14 +106,33 @@ class Context(object):
         self.bot = event_context.bot
 
     @classmethod
-    def add_converter(cls, type_: Type[Any], converter: 'Callable[[Context, str], Any]'):
+    def add_global_converter(cls, type_: Type[Any], converter: _c_typehint):
         """
-        Adds a converter to the mapping of converters.
+        Adds a converter to the mapping of global converters.
 
         :param type_: The type to convert to.
         :param converter: The converter callable.
         """
-        cls._converters[type_] = converter
+        cls._global_converters[type_] = converter
+
+    @classmethod
+    def add_converter(cls, type_: Type[Any], converter: _c_typehint):
+        """
+        Adds a converter to the mapping of converters for the current bot.
+
+        :param type_: The type to convert to.
+        :param converter: The converter callable.
+        """
+        try:
+            converter_dict = cls._local_converters.get()
+        except LookupError:  # will be caught as it bubbles up from the current_bot.get()
+            raise RuntimeError("Tried to add a local converter from a non-bot context")
+
+        if converter_dict is None:
+            converter_dict = {}
+            cls._local_converters.set(converter_dict)
+
+        converter_dict[type_] = converter
 
     @property
     def guild(self) -> Guild:
@@ -159,8 +182,12 @@ class Context(object):
         if origin is not None:
             annotation = origin
 
-        if annotation in self._converters:
-            return self._converters[annotation]
+        local_converters = self._local_converters.get()
+        if local_converters is not None and annotation in local_converters:
+            return local_converters[annotation]
+
+        if annotation in self._global_converters:
+            return self._global_converters[annotation]
 
         if annotation is inspect.Parameter.empty:
             return lambda ann, ctx, i: i
