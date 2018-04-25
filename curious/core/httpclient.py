@@ -18,23 +18,23 @@ The main Discord HTTP interface.
 
 .. currentmodule:: curious.core.httpclient
 """
+import time
+from math import ceil, floor
+
+import asks
 import datetime
 import logging
 import mimetypes
-import random
-import time
-import typing
-import weakref
-from email.utils import parsedate
-from math import ceil, floor
-from urllib.parse import quote
-
-import asks
 import multio
 import pytz
+import random
+import typing
+import weakref
 from asks.errors import ConnectivityError
 from asks.response_objects import Response
+from email.utils import parsedate
 from h11 import RemoteProtocolError
+from urllib.parse import quote
 
 try:
     # try and load a C impl of LRU first
@@ -537,9 +537,6 @@ class HTTPClient(object):
         """
         :return: The recommended number of shards for this bot.
         """
-        if not self._is_bot:
-            raise Forbidden(None, {"code": 20002, "message": "Only bots can use this endpoint"})
-
         data = await self.get(Endpoints.GATEWAY_BOT, "gateway")
         return data["url"], data["shards"]
 
