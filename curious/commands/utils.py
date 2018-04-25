@@ -17,11 +17,10 @@ Misc utilities used in commands related things.
 
 .. currentmodule:: curious.commands.utils
 """
-import inspect
-from typing import Callable, Iterable, List, Union
-
 import collections
+import inspect
 import typing_inspect
+from typing import Callable, Iterable, List, Union
 
 from curious.commands.exc import ConversionFailedError, MissingArgumentError
 from curious.core.client import Client
@@ -308,10 +307,10 @@ def prefix_check_factory(prefix: Union[str, Iterable[str], Callable[[Client, Mes
 
         # verbose form
         message_check = prefix_check_factory(["!", "?"])
-        cl = Client(message_check=message_check)
+        cl = CommandsManager(message_check=message_check)
 
         # implicit form
-        cl = Client(command_prefix=["!", "?"])
+        cl = CommandsManager(command_prefix=["!", "?"])
 
     The :attr:`prefix` is set on the returned function that can be used to retrieve the prefixes
     defined to create  the function at any time.
