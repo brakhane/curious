@@ -233,12 +233,10 @@ class HTTPClient(object):
     from hitting 429 ratelimits.
 
     :param token: The token to use for all HTTP requests.
-    :param bot: Is this client a bot?
     :param max_connections: The max connections for this HTTP client.
     """
 
     def __init__(self, token: str, *,
-                 bot: bool = True,
                  max_connections: int = 10):
         #: The token used for all requests.
         self.token = token
@@ -246,7 +244,7 @@ class HTTPClient(object):
         # Calculated headers
         headers = {
             "User-Agent": curious.USER_AGENT,
-            "Authorization": "{}{}".format("Bot " if bot else "", self.token)
+            "Authorization": "Bot {}".format(self.token)
         }
 
         self.endpoints = Endpoints()
@@ -259,7 +257,6 @@ class HTTPClient(object):
 
         self._rate_limits = weakref.WeakValueDictionary()
         self._ratelimit_remaining = lru(1024)
-        self._is_bot = bot
 
     def get_ratelimit_lock(self, bucket: object) -> 'multio.Lock':
         """
