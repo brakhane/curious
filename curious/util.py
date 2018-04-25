@@ -24,13 +24,12 @@ import datetime
 import functools
 import imghdr
 import inspect
+import multio
 import textwrap
 import types
 import warnings
-from typing import Any, Awaitable, Callable, Coroutine, List, Union
-
-import multio
 from multidict import MultiDict
+from typing import Any, Awaitable, Callable, Coroutine, List, Union
 
 NO_ITEM = object()
 
@@ -196,29 +195,6 @@ def replace_quotes(item: str) -> str:
         final_str_arr.append(char)
 
     return "".join(final_str_arr)
-
-
-def _traverse_stack_for(t: type):
-    """
-    Traverses the stack for an object of type ``t``.
-
-    :param t: The type of the object.
-    :return: The object, if found.
-    """
-    for fr in inspect.stack():
-        frame = fr.frame
-        try:
-            locals = frame.locals
-        except AttributeError:
-            # idk
-            continue
-        else:
-            for object in locals.values():
-                if type(object) is t:
-                    return object
-        finally:
-            # prevent reference cycles
-            del fr
 
 
 async def coerce_agen(gen):
