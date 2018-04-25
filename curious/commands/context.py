@@ -51,7 +51,7 @@ author: Union[User, Member] = ProxyLookupVar(command_context, "author")  # type:
 #: The guild for the current command context.
 guild: Guild = ProxyLookupVar(command_context, "guild")  # type: ignore
 
-_c_typehint: 'Callable[[Any, Context, str], Any]'
+_c_typehint = 'Callable[[Any, Context, str], Any]'
 
 
 class Context(object):
@@ -106,7 +106,8 @@ class Context(object):
         self.bot = event_context.bot
 
     @classmethod
-    def add_global_converter(cls, type_: Type[Any], converter: _c_typehint):
+    def add_global_converter(cls, type_: Type[Any],
+                             converter: _c_typehint):
         """
         Adds a converter to the mapping of global converters.
 
