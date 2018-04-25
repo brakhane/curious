@@ -136,7 +136,7 @@ class Client(object):
         self._ready_state = {}
 
         #: The :class:`.HTTPClient` used for this bot.
-        self.http = HTTPClient(self._token, bot=bool(self.bot_type & BotType.BOT))
+        self.http = HTTPClient(self._token)
 
         #: The cached gateway URL.
         self._gw_url = None  # type: str
