@@ -19,7 +19,6 @@ Class for the commands context.
 .. currentmodule:: curious.commands.context
 """
 import inspect
-import types
 import typing_inspect
 from contextvars import ContextVar
 from typing import Any, Callable, List, Tuple, Type, Union
@@ -306,7 +305,8 @@ class Context(object):
 
         # bind method, if appropriate
         if not hasattr(matched_command, "__self__") and self_ is not None:
-            matched_command = types.MethodType(matched_command, self_)
+            # matched_command = types.MethodType(matched_command, self_)
+            matched_command = matched_command.__get__(self_)
 
         # check if we can actually run it
         can_run, conditions_failed = await self.can_run(matched_command)
@@ -326,12 +326,12 @@ class Context(object):
         try:
             if getattr(matched_command, "cmd_pass_ctx", False):
                 converted_args = (self, *converted_args)
+
             value = await matched_command(*converted_args, **converted_kwargs)
             if value is not None and getattr(command, "cmd_send_return"):
                 await self.channel.messages.send(value)
 
             return value
-
         except CommandsError:
             raise
         except Exception as e:
