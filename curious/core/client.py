@@ -289,8 +289,8 @@ class Client(object):
         return await self.events.wait_for(*args, **kwargs)
 
     # Gateway functions
-    async def change_status(self, game: Game = None, status: Status = Status.ONLINE,
-                            afk: bool = False,
+    async def change_status(self, game: Game = None, status: Status = None,
+                            afk: bool = None,
                             shard_id: int = 0):
         """
         Changes the bot's current status.
@@ -305,7 +305,8 @@ class Client(object):
         return await gateway.send_status(
             name=game.name if game else None, type_=game.type if game else None,
             url=game.url if game else None,
-            status=status.value, afk=afk
+            status=status.value if status is not None else None,
+            afk=afk if afk is not None else None
         )
 
     # HTTP Functions
