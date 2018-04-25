@@ -841,6 +841,11 @@ class State(object):
         # Re-create the user object.
         # self.make_user(event_data["user"], override_cache=True)
         # self._users[member.user.id] = member.user
+        user = event_data.get("user")
+        if user:
+            # remake user object
+            self.make_user(**user, override_cache=True)
+            self._check_decache_user(member_id)
 
         # Overwrite roles, we want to get rid of any roles that are stale.
         if "roles" in event_data:
