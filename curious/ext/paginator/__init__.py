@@ -16,9 +16,8 @@
 """
 A reactions-based paginator.
 """
-import typing
-
 import multio
+import typing
 
 from curious.core import current_bot
 from curious.core.event import ListenerExit
@@ -176,8 +175,9 @@ class ReactionsPaginator(object):
         except multio.asynclib.TaskTimeout:
             # eat timeouts but nothing else
             pass
+        finally:
+            bot.events.remove_listener_early("message_reaction_add", consume_reaction)
 
         self._running = False
         # we've broken out of the loop, so remove reactions and cancel the listener
         await self._message.remove_all_reactions()
-        bot.events.remove_listener_early("message_reaction_add", consume_reaction)
