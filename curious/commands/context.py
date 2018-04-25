@@ -261,6 +261,10 @@ class Context(object):
         This will convert arguments, pass them in to the command, and run the command.
 
         :param command: The command function to run.
+
+        .. versionchanged: 1.0
+
+            Returning a result from the command will cause it to
         """
         # try and do a group lookup
         # how this works:
@@ -322,7 +326,12 @@ class Context(object):
         try:
             if getattr(matched_command, "cmd_pass_ctx", False):
                 converted_args = (self, *converted_args)
-            return await matched_command(*converted_args, **converted_kwargs)
+            value = await matched_command(*converted_args, **converted_kwargs)
+            if value is not None and getattr(command, "cmd_send_return"):
+                await self.channel.messages.send(value)
+
+            return value
+
         except CommandsError:
             raise
         except Exception as e:

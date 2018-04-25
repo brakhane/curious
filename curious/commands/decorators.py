@@ -32,7 +32,9 @@ logger = logging.getLogger(__name__)
 def command(*,
             name: str = None, description: str = None,
             hidden: bool = False,
-            aliases: List[str] = None, **kwargs):
+            aliases: List[str] = None,
+            send_return: bool = True,
+            **kwargs):
     """
     Marks a function as a command. This annotates the command with some attributes that allow it
     to be invoked as a command.
@@ -51,6 +53,7 @@ def command(*,
         first line of the docstring.
     :param hidden: If this command is hidden; i.e. it doesn't show up in the help listing.
     :param aliases: A list of aliases for this command.
+    :param send_return: If returning from this command should send a message.
     :param kwargs: Anything to annotate the command with.
     """
 
@@ -70,6 +73,7 @@ def command(*,
         set("cmd_subcommands", [])
         set("cmd_parent", None)
         set("cmd_hidden", hidden)
+        set("cmd_send_return", send_return)
         set("cmd_conditions", [])
         set("cmd_ratelimits", [])
 
