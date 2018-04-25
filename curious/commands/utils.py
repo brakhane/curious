@@ -350,4 +350,5 @@ def prefix_check_factory(prefix: Union[str, Iterable[str], Callable[[Client, Mes
         return command_word, tokens[1:]
 
     __inner.prefix = prefix
+    __inner.__name__ = f"<Prefix matcher prefixes='{prefix}'>"
     return __inner
