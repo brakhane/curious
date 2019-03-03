@@ -317,7 +317,7 @@ class HTTPClient(object):
         else:
             kwargs.pop("path", None)
 
-        return await asks.request(*args, headers=headers, timeout=5, **kwargs)
+        return await asks.request(*args, headers=headers, timeout=10, **kwargs)
 
     async def request(self, bucket: object, *args, **kwargs):
         """
