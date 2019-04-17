@@ -310,7 +310,7 @@ class Message(Dataclass):
             me = self.guild.me.id
             has_manage_messages = self.channel.effective_permissions(self.guild.me).manage_messages
 
-        if self.id != me and not has_manage_messages:
+        if self.author.id != me and not has_manage_messages:
             raise PermissionsError("manage_messages")
 
         await self._bot.http.delete_message(self.channel.id, self.id)
