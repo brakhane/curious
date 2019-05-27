@@ -66,6 +66,9 @@ class MessageType(enum.IntEnum):
     #: The guild member join type, used when a member joins a guild.
     GUILD_MEMBER_JOIN = 7
 
+    # Undocumented type that showed up recently, probably something to do with "server boosting"
+    UNKNOWN = 8
+
 
 class Message(Dataclass):
     """
