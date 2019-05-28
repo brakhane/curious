@@ -93,7 +93,7 @@ class State(object):
     def is_ready(self, shard_id: int) -> bool:
         """
         Checks if a shard is ready.
-        
+
         :param shard_id: The shard ID to check.
         :return: A boolean signifying if this shard is ready or not.
         """
@@ -183,9 +183,9 @@ class State(object):
 
     def find_channel(self, channel_id: int) -> typing.Union[Channel, None]:
         """
-        Finds a channel by ID.  
+        Finds a channel by ID.
         This will search all guild channels, as well as private channels.
-        
+
         :param channel_id: The ID of the channel to find.
         :return: A :class:`.Channel` that represents the channel, or None if no channel was found.
         """
@@ -323,12 +323,16 @@ class State(object):
     def make_message(self, event_data: dict, cache: bool = True) -> Message:
         """
         Constructs a new message object.
-        
+
         :param event_data: The message data to use to create.
         :param cache: Should this message be cached?
         :return: A new :class:`.Message` object for the message.
         """
-        message = Message(self.client, **event_data)
+        try:
+            message = Message(self.client, **event_data)
+        except ValueError:
+            logger.exception("Cannot create message, ignoring")
+            return None
 
         if message in self.messages and cache is True:
             # don't bother re-caching

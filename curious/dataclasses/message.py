@@ -66,9 +66,6 @@ class MessageType(enum.IntEnum):
     #: The guild member join type, used when a member joins a guild.
     GUILD_MEMBER_JOIN = 7
 
-    # Undocumented type that showed up recently, probably something to do with "server boosting"
-    UNKNOWN = 8
-
 
 class Message(Dataclass):
     """
@@ -159,10 +156,10 @@ class Message(Dataclass):
     def mentions(self) -> 'typing.List[dt_member.Member]':
         """
         Returns a list of :class:`.Member` that were mentioned in this message.
-        
+
         .. warning::
-            
-            The mentions in this will **not** be in order. Discord does not return them in any 
+
+            The mentions in this will **not** be in order. Discord does not return them in any
             particular order.
 
         """
@@ -172,10 +169,10 @@ class Message(Dataclass):
     def role_mentions(self) -> 'typing.List[dt_role.Role]':
         """
         Returns a list of :class:`.Role` that were mentioned in this message.
-        
+
         .. warning::
-            
-            The mentions in this will **not** be in order. Discord does not return them in any 
+
+            The mentions in this will **not** be in order. Discord does not return them in any
             particular order.
 
         """
@@ -186,9 +183,9 @@ class Message(Dataclass):
     def channel_mentions(self) -> 'typing.List[dt_channel.Channel]':
         """
         Returns a list of :class:`.Channel` that were mentioned in this message.
-        
+
         .. note::
-        
+
             These mentions **are** in order. They are parsed from the message content.
 
         """
@@ -249,7 +246,7 @@ class Message(Dataclass):
             -> 'typing.List[typing.Union[dt_channel.Channel, dt_role.Role, dt_member.Member]]':
         """
         Resolves the mentions for this message.
-        
+
         :param mentions: The mentions to resolve; a list of dicts or ints.
         :param type_: The type of mention to resolve: ``channel``, ``role``, or ``member``.
         """
@@ -303,7 +300,7 @@ class Message(Dataclass):
         """
         Deletes this message.
 
-        You must have MANAGE_MESSAGE permissions to delete this message, or have it be your own 
+        You must have MANAGE_MESSAGE permissions to delete this message, or have it be your own
         message.
         """
         if self.guild is None:
