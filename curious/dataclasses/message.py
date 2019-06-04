@@ -66,6 +66,19 @@ class MessageType(enum.IntEnum):
     #: The guild member join type, used when a member joins a guild.
     GUILD_MEMBER_JOIN = 7
 
+    #: Not documented for now. Something to do with Server Nitro Boost
+    USER_PREMIUM_GUILD_SUBSCRIPTION = 8
+
+    #: Not documented for now. Something to do with Server Nitro Boost
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_1 = 9
+
+    #: Not documented for now. Something to do with Server Nitro Boost
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_2 = 10
+
+    #: Not documented for now. Something to do with Server Nitro Boost
+    USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_3 = 11
+
+
 
 class Message(Dataclass):
     """
