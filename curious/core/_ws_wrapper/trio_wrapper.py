@@ -21,6 +21,8 @@ from collections import AsyncIterator
 import functools
 import threading
 import trio
+import trio.from_thread
+import trio.to_thread
 from lomond import WebSocket
 from lomond.events import Event
 from lomond.persist import persist
@@ -43,8 +45,7 @@ class TrioWebsocketWrapper(BasicWebsocketWrapper):
 
         self.nursery = nursery
 
-        self._portal = trio.BlockingTrioPortal()
-        self._queue = trio.Queue(capacity=5)
+        self._send_ch, self._recv_ch = trio.open_memory_channel(5)
         self._cancelled = threading.Event()
         self._ws = None  # type: WebSocket
 
@@ -57,10 +58,10 @@ class TrioWebsocketWrapper(BasicWebsocketWrapper):
         # generate poll events every 0.5 seconds to see if we can cancel
         websocket = persist(ws, ping_rate=0, poll=1, exit_event=self._cancelled)
         for event in websocket:
-            self._portal.run(self._queue.put, event)
+            trio.from_thread.run(self._send_ch.send, event)
 
         # signal the end of the queue
-        self._portal.run(self._queue.put, self._done)
+        trio.from_thread.run(self._send_ch.send, self._done)
 
     @classmethod
     async def open(cls, url: str, nursery) -> 'BasicWebsocketWrapper':
@@ -71,7 +72,7 @@ class TrioWebsocketWrapper(BasicWebsocketWrapper):
         :param nursery: The nursery to use.
         """
         obb = cls(url, nursery)
-        partial = functools.partial(trio.run_sync_in_worker_thread)
+        partial = functools.partial(trio.to_thread.run_sync)
         nursery.start_soon(partial, obb.websocket_task)
         return obb
 
@@ -96,7 +97,7 @@ class TrioWebsocketWrapper(BasicWebsocketWrapper):
         self._ws.send_text(text)
 
     async def __aiter__(self) -> 'AsyncIterator[Event]':
-        async for item in self._queue:
+        async for item in self._recv_ch:
             if item == self._done:
                 return
 
