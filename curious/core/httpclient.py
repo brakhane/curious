@@ -253,7 +253,7 @@ class HTTPClient(object):
 
         self.endpoints = Endpoints()
         self.session = asks.Session(base_location=self.endpoints.BASE, endpoint=Endpoints.API_BASE,
-                                    connections=max_connections, headers={"connection": "keep-alive"})
+                                    connections=max_connections)
         self.headers = headers
 
         #: The global ratelimit lock.
