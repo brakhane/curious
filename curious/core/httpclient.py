@@ -241,7 +241,7 @@ class HTTPClient(object):
 
     def __init__(self, token: str, *,
                  bot: bool = True,
-                 max_connections: int = 10):
+                 max_connections: int = 20):
         #: The token used for all requests.
         self.token = token
 
@@ -310,14 +310,13 @@ class HTTPClient(object):
             path = quote(path)
             kwargs["path"] = path
 
-        # temporary
-        # return await self.session.request(*args, headers=headers, timeout=5, **kwargs)
-        if 'uri' not in kwargs:
-            kwargs["uri"] = self.endpoints.BASE + Endpoints.API_BASE + kwargs["path"]
-        else:
-            kwargs.pop("path", None)
+        return await self.session.request(*args, headers=headers, timeout=10, **kwargs)
+        # if 'uri' not in kwargs:
+        #     kwargs["uri"] = self.endpoints.BASE + Endpoints.API_BASE + kwargs["path"]
+        # else:
+        #     kwargs.pop("path", None)
 
-        return await asks.request(*args, headers=headers, timeout=10, **kwargs)
+        # return await asks.request(*args, headers=headers, timeout=10, **kwargs)
 
     async def request(self, bucket: object, *args, **kwargs):
         """
