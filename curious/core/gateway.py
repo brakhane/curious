@@ -463,7 +463,7 @@ class GatewayHandler(object):
             try:
                 data = await self.websocket.get_message()
             except ws.ConnectionClosed:
-                self.logger.warning("Websocket closed, reconnecting")
+                self.logger.warning("Websocket closed ({self.websocket.closed}), reconnecting")
                 await self.open()
             else:
                 async for ev in self.handle_data(data):
