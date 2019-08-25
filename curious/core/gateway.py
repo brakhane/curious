@@ -327,7 +327,7 @@ class GatewayHandler(object):
             self._databuffer.clear()
             self._decompressor = zlib.decompressobj()
 
-            self.websocket = await ws.connect_websocket_url(self.task_group, self.gw_state.gateway_url)
+            self.websocket = await ws.connect_websocket_url(self.task_group, self.gw_state.gateway_url, max_message_size=10*1024*1024)
         finally:
             self._open_lock.release()
 
@@ -463,7 +463,7 @@ class GatewayHandler(object):
             try:
                 data = await self.websocket.get_message()
             except ws.ConnectionClosed:
-                self.logger.warning("Websocket closed ({self.websocket.closed}), reconnecting")
+                self.logger.warning(f"Websocket closed ({self.websocket.closed}), reconnecting")
                 await self.open()
             else:
                 async for ev in self.handle_data(data):
