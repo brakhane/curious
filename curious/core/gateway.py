@@ -27,14 +27,13 @@ import enum
 import json
 import logging
 import multio
-import trio
-import trio_websocket as ws
-
 from async_generator import asynccontextmanager
 from dataclasses import dataclass  # use a 3.6 backport if available
+from lomond.errors import WebSocketClosed, WebSocketClosing, WebSocketUnavailable
+from lomond.events import Binary, Closed, Connected, Connecting, Text
 from typing import Any, AsyncContextManager, AsyncGenerator, List, Union
 
-
+from curious.core._ws_wrapper import BasicWebsocketWrapper
 from curious.util import safe_generator
 
 
@@ -130,13 +129,13 @@ class GatewayHandler(object):
         #: The current heartbeat stats being used for this gateway.
         self.heartbeat_stats = HeartbeatStats()
 
+        #: The current :class:`.BasicWebsocketWrapper` connected to Discord.
+        self.websocket: BasicWebsocketWrapper = None
+
         #: The current task group for this gateway.
         self.task_group = None
 
-        self.websocket = None
-
         self._logger = None
-        self._open_lock = trio.Lock()
         self._stop_heartbeating = multio.Event()
         self._dispatches_handled = Counter()
 
@@ -167,19 +166,9 @@ class GatewayHandler(object):
         :param clear_session_id: If we should clear the session ID.
         :param forceful: If the websocket should be forcefully closed.
         """
-        if not self.websocket:
-            return
-
-        await self.websocket.aclose(code=code, reason=reason)
-        
-        self.websocket = None
-
+        await self.websocket.close(code=code, reason=reason, reconnect=reconnect, forceful=forceful)
         # this kills the websocket
         await self._stop_heartbeating.set()
-
-        if reconnect:
-            self.logger.info("Reconnecting")
-            await self.open()
 
         if clear_session_id:
             self.gw_state.session_id = None
@@ -194,7 +183,7 @@ class GatewayHandler(object):
         Sends data down the websocket.
         """
         dumped = json.dumps(data)
-        return await self.websocket.send_message(dumped)
+        return await self.websocket.send_text(dumped)
 
     async def send_identify(self) -> None:
         """
@@ -314,22 +303,48 @@ class GatewayHandler(object):
 
             This only opens the websocket.
         """
-        try:
-            self._open_lock.acquire_nowait()
-        except trio.WouldBlock:
-            # already an open in progress, wait for it to finish, and then return as well
-            await self._open_lock.acquire()
-            self._open_lock.release()
-            return
+        if multio.asynclib.lib_name == "curio":
+            from curious.core._ws_wrapper.curio_wrapper import CurioWebsocketWrapper as Wrapper
+            ws_open = Wrapper.open
+        elif multio.asynclib.lib_name == "trio":
+            from curious.core._ws_wrapper.trio_wrapper import TrioWebsocketWrapper as Wrapper
+            ws_open = lambda url: Wrapper.open(url, self.task_group)
+        else:
+            raise RuntimeError("Unsupported lib: " + multio.asynclib.lib_name)
 
-        try:
-            # new websocket means zlib starts from scratch
-            self._databuffer.clear()
-            self._decompressor = zlib.decompressobj()
+        self.logger.info("Using %s for the gateway", Wrapper.__name__)
 
-            self.websocket = await ws.connect_websocket_url(self.task_group, self.gw_state.gateway_url)
-        finally:
-            self._open_lock.release()
+        # new websocket means zlib starts from scratch
+        self._databuffer.clear()
+        self._decompressor = zlib.decompressobj()
+
+        self.websocket = await ws_open(self.gw_state.gateway_url)
+
+    async def events(self) -> AsyncGenerator[None, Any]:
+        """
+        Returns an async generator used to iterate over the events received by this websocket.
+        """
+        async for event in self.websocket:
+            if isinstance(event, Closed):
+                await self._stop_heartbeat_events()
+                self.logger.info("The websocket has closed")
+                yield "websocket_closed",
+
+            elif isinstance(event, Connecting):
+                self.logger.info("The websocket is opening...")
+                # we need to reset the data buffer and zlib inflater
+                self._databuffer.clear()
+                self._decompressor = zlib.decompressobj()
+                yield "websocket_opened",
+
+            elif isinstance(event, Connected):
+                self.logger.info("The websocket has connected")
+
+            elif isinstance(event, (Text, Binary)):
+                gen = self.handle_data_event(event)
+                async with multio.asynclib.finalize_agen(gen) as finalized:
+                    async for i in finalized:
+                        yield i
 
     async def _start_heatbeat_events(self, heartbeat_interval: float):
         """
@@ -366,14 +381,19 @@ class GatewayHandler(object):
         self.heartbeat_stats.heartbeats = 0
         self.heartbeat_stats.heartbeat_acks = 0
 
-    async def handle_data(self, data: Union[str, bytes]):
-        if isinstance(data, bytes):
-            self._databuffer.extend(data)
-            if not data.endswith(self.ZLIB_FLUSH_SUFFIX):
+    async def handle_data_event(self, evt: Union[Text, Binary]):
+        """
+        Handles a data event.
+        """
+        if evt.name == "binary":
+            self._databuffer.extend(evt.data)
+            if not evt.data.endswith(self.ZLIB_FLUSH_SUFFIX):
                 return
             else:
                 data = self._decompressor.decompress(self._databuffer).decode('utf-8')
                 self._databuffer.clear()
+        else:
+            data = evt.text
 
         # empty payloads
         if not data:
@@ -398,12 +418,16 @@ class GatewayHandler(object):
             trace = ", ".join(event_data["_trace"])
             self.logger.info(f"Connected to Discord servers {trace}")
 
-            if self.gw_state.session_id is None:
-                self.logger.info("Sending IDENTIFY...")
-                await self.send_identify()
-            else:
-                self.logger.info("We already have a session ID, Sending RESUME...")
-                await self.send_resume()
+            try:
+                if self.gw_state.session_id is None:
+                    self.logger.info("Sending IDENTIFY...")
+                    await self.send_identify()
+                else:
+                    self.logger.info("We already have a session ID, Sending RESUME...")
+                    await self.send_resume()
+            except (WebSocketClosing, WebSocketClosed):
+                # got killed during a reconnect, so we'll retry after the reconnect
+                pass
 
             # give an event down here instead of above
             # this means that we're all done when we go to give off our event
@@ -458,18 +482,6 @@ class GatewayHandler(object):
                 self.logger.warning("Unknown opcode: {}".format(opcode))
 
 
-    async def events(self) -> AsyncGenerator[None, Any]:
-        while True:
-            try:
-                data = await self.websocket.get_message()
-            except ws.ConnectionClosed:
-                self.logger.warning("Websocket closed, reconnecting")
-                await self.open()
-            else:
-                async for ev in self.handle_data(data):
-                    yield ev
-
-
 @asynccontextmanager
 @safe_generator
 async def open_websocket(token: str, url: str, *,
@@ -487,7 +499,7 @@ async def open_websocket(token: str, url: str, *,
                 # example for changing presence
                 nursery.start_soon(some_gw_handler, gateway)
 
-                async for data in gateway.data_stream():
+                async for event in gateway.events():
                     # handle events, etc.
                     ...
 
