@@ -12,7 +12,8 @@ install_requires = [
         "multidict>=4.1.0,<4.2.0",
         "multio>=0.2.1,<0.3.0",
         "async_generator~=1.9",  # asynccontextmanager for 3.6
-        "typing_inspect>=0.2.0"
+        "typing_inspect>=0.2.0",
+        "trio_websocket>=0.8.0,<0.9.0"
 ]
 
 py36_requires = [
