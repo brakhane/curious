@@ -178,7 +178,8 @@ class GatewayHandler(object):
         await self._stop_heartbeating.set()
 
         if reconnect:
-            self.logger.info("Reconnecting")
+            self.logger.info("Reconnecting after 1s")
+            await trio.sleep(1)
             await self.open()
 
         if clear_session_id:
@@ -463,7 +464,8 @@ class GatewayHandler(object):
             try:
                 data = await self.websocket.get_message()
             except ws.ConnectionClosed:
-                self.logger.warning(f"Websocket closed ({self.websocket.closed}), reconnecting")
+                self.logger.warning(f"Websocket closed ({self.websocket.closed}), reconnecting in 1s")
+                await trio.sleep(1)
                 await self.open()
             else:
                 async for ev in self.handle_data(data):
