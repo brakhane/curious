@@ -352,7 +352,7 @@ class GatewayHandler(object):
 
                 try:
                     await self.send_heartbeat()
-                except (WebSocketClosing, WebSocketClosed, WebSocketUnavailable):
+                except ws.ConnectionClosed:
                     return
 
         await multio.asynclib.spawn(self.task_group, heartbeater)
