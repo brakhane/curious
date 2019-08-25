@@ -20,6 +20,7 @@ Websocket gateway code.
 """
 import sys
 import time
+import random
 import zlib
 from collections import Counter
 
@@ -431,6 +432,8 @@ class GatewayHandler(object):
                 self.logger.warning("Received INVALIDATE_SESSION with d False, re-identifying.")
                 self.gw_state.sequence = 0
                 self.gw_state.session_id = None
+                # Discord says to wait a random time between 1-5s
+                await trio.sleep(random.randint(1, 5))
                 await self.send_identify()
 
             yield ("gateway_invalidate_session", should_resume,)
