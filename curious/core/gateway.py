@@ -171,12 +171,12 @@ class GatewayHandler(object):
         if not self.websocket:
             return
 
+        # this kills the websocket
+        await self._stop_heartbeating.set()
+
         await self.websocket.aclose(code=code, reason=reason)
         
         self.websocket = None
-
-        # this kills the websocket
-        await self._stop_heartbeating.set()
 
         if reconnect:
             self.logger.info("Reconnecting after 1s")
@@ -230,6 +230,7 @@ class GatewayHandler(object):
 
         if self.heartbeat_stats.heartbeats > self.heartbeat_stats.heartbeat_acks + 1:
             self.logger.warning("Connection has zombied, reconnecting.")
+            self.heartbeat_stats = HeartbeatStats()
 
             # Note: The 1006 close code signifies an error.
             # In my testing, closing with a 1006 will allow a resume once reconnected,

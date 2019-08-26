@@ -310,7 +310,8 @@ class HTTPClient(object):
             path = quote(path)
             kwargs["path"] = path
 
-        return await self.session.request(*args, headers=headers, timeout=10, **kwargs)
+        request = asks.request if "uri" in kwargs else self.session.request
+        return await request(*args, headers=headers, timeout=10, **kwargs)
         # if 'uri' not in kwargs:
         #     kwargs["uri"] = self.endpoints.BASE + Endpoints.API_BASE + kwargs["path"]
         # else:
