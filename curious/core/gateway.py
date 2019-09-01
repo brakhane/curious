@@ -466,7 +466,11 @@ class GatewayHandler(object):
     async def events(self) -> AsyncGenerator[None, Any]:
         while True:
             try:
-                data = await self.websocket.get_message()
+                if self.websocket:
+                    data = await self.websocket.get_message()
+                else:
+                    # might be reinitializing, sleep a bit, then try again
+                    await trio.sleep(1)
             except ws.ConnectionClosed:
                 self.logger.warning(f"Websocket closed ({self.websocket.closed}), reconnecting in 1s")
                 await trio.sleep(1)
