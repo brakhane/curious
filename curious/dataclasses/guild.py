@@ -261,8 +261,12 @@ class GuildChannelWrapper(_WrapperBase):
 
         :param topic: The topic of the channel, or None to set no topic.
         """
-        if not self._guild.me.guild_permissions.manage_channels:
-            raise PermissionsError("manage_channels")
+        if parent is None:
+            if not self._guild.me.guild_permissions.manage_channels:
+                raise PermissionsError("manage_channels")
+        else:
+            if not parent.effective_permissions(self._guild.me).manage_channels:
+                raise PermissionsError("manage_channels")
 
         if type_ is None:
             type_ = dt_channel.ChannelType.TEXT
@@ -327,14 +331,15 @@ class GuildChannelWrapper(_WrapperBase):
 
         """
         
-        if not self._guild.me.guild_permissions.manage_channels:
-            raise PermissionsError("manage_channels")
 
         if isinstance(channels_and_positions, dict):
             channels_and_positions = channels_and_positions.items()
 
         # in case the iterable is only iterable once, convert it to a list
         channels_and_positions = list(channels_and_positions)
+
+        if not all(chan.effective_permissions(self._guild.me).manage_channels for chan, pos in channels_and_positions):
+            raise PermissionsError("manage_channels")
 
         channels_left = set(chan.id for chan, pos in channels_and_positions if chan.position != pos)
 
