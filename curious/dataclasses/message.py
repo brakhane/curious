@@ -78,6 +78,7 @@ class MessageType(enum.IntEnum):
     #: Not documented for now. Something to do with Server Nitro Boost
     USER_PREMIUM_GUILD_SUBSCRIPTION_TIER_3 = 11
 
+    CHANNEL_FOLLOW_ADD = 12
 
 
 class Message(Dataclass):
