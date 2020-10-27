@@ -264,16 +264,17 @@ class GatewayHandler(object):
         """
         Sends GUILD_MEMBER_CHUNK packets to Discord.
         """
-        payload = {
-            "op": GatewayOp.REQUEST_MEMBERS,
-            "d": {
-                "guild_id": list(map(str, guild_ids)),
-                "query": "",
-                "limit": 0
+        for guild_id in guild_ids:
+            payload = {
+                "op": GatewayOp.REQUEST_MEMBERS,
+                "d": {
+                    "guild_id": [str(guild_id)],
+                    "query": "",
+                    "limit": 0
+                }
             }
-        }
+            await self.send(payload)
 
-        return await self.send(payload)
 
     async def send_status(self, *, status: int = None, name: str = None, url: str = None,
                           type_: int = None,
