@@ -436,6 +436,8 @@ class GatewayHandler(object):
                 await self.send_resume()
             else:
                 self.logger.warning("Received INVALIDATE_SESSION with d False, re-identifying.")
+                self.logger.warning("restarting instead")
+                raise SystemExit(2)
                 self.gw_state.sequence = 0
                 self.gw_state.session_id = None
                 # Discord says to wait a random time between 1-5s
