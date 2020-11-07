@@ -329,7 +329,11 @@ class CommandsManager(object):
         """
         async with multio.asynclib.task_manager() as tg:
             for plugin in self.plugins.values():
-                body = inspect.getmembers(plugin, predicate=lambda v: hasattr(v, "is_event"))
+                body = getattr(plugin, "_CURIOUS_EVENTS", None)
+                if body is None:
+                    body = inspect.getmembers(plugin, predicate=lambda v: hasattr(v, "is_event"))
+                    setattr(plugin, "_CURIOUS_EVENTS", body)
+
                 for _, handler in body:
                     if ctx.event_name not in handler.events:
                         continue
